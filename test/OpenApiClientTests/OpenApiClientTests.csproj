@@ -3,11 +3,11 @@
         <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
     </PropertyGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\..\src\JsonApiDotNetCore.OpenApi.Client\JsonApiDotNetCore.OpenApi.Client.csproj"/>
-        <ProjectReference Include="..\OpenApiTests\OpenApiTests.csproj"/>
-        <ProjectReference Include="..\TestBuildingBlocks\TestBuildingBlocks.csproj"/>
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\JsonApiDotNetCore.OpenApi.Client\JsonApiDotNetCore.OpenApi.Client.csproj" />
+    <ProjectReference Include="..\OpenApiTests\OpenApiTests.csproj" />
+    <ProjectReference Include="..\TestBuildingBlocks\TestBuildingBlocks.csproj" />
+  </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="$(CoverletVersion)" PrivateAssets="All"/>
@@ -28,14 +28,14 @@
         </PackageReference>
     </ItemGroup>
 
-    <ItemGroup>
-        <OpenApiReference Include="..\OpenApiTests\LegacyOpenApiIntegration\LegacyOpenApiIntegration.json">
-            <Namespace>OpenApiClientTests.LegacyClient.GeneratedCode</Namespace>
-            <ClassName>OpenApiClient</ClassName>
-            <CodeGenerator>NSwagCSharp</CodeGenerator>
-            <Options>/UseBaseUrl:false /GenerateClientInterfaces:true /ClientClassAccessModifier:internal /GenerateExceptionClasses:false /AdditionalNamespaceUsages:OpenApiClientTests.Exceptions</Options>
-        </OpenApiReference>
-    </ItemGroup>
+  <ItemGroup>
+    <OpenApiReference Include="..\OpenApiTests\LegacyOpenApiIntegration\LegacyOpenApiIntegration.json">
+      <Namespace>OpenApiClientTests.LegacyClient.GeneratedCode</Namespace>
+      <ClassName>OpenApiClient</ClassName>
+      <CodeGenerator>NSwagCSharp</CodeGenerator>
+      <Options>/UseBaseUrl:false /GenerateClientInterfaces:true /ClientClassAccessModifier:internal</Options>
+    </OpenApiReference>
+  </ItemGroup>
 
     <ItemGroup>
         <OpenApiReference Include="..\OpenApiTests\NamingConvention\KebabCase\KebabCase.json">
