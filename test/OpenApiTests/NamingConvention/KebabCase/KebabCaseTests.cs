@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -22,21 +23,13 @@ namespace OpenApiTests.NamingConvention.KebabCase
             _lazyOpenApiDocument ??= new Lazy<Task<JsonDocument>>(async () =>
             {
                 testContext.UseController<SupermarketsController>();
-                const string requestUrl = "swagger/v1/swagger.json";
-                string content = await GetAsync(requestUrl);
+
+                string content = await GetAsync("swagger/v1/swagger.json");
+
+                await WriteToSwaggerDocumentsFolderAsync(content);
 
                 return JsonDocument.Parse(content);
             }, LazyThreadSafetyMode.ExecutionAndPublication);
-        }
-
-        private async Task<string> GetAsync(string requestUrl)
-        {
-            var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
-
-            using HttpClient client = _testContext.Factory.CreateClient();
-            HttpResponseMessage responseMessage = await client.SendAsync(request);
-
-            return await responseMessage.Content.ReadAsStringAsync();
         }
 
         [Fact]
@@ -117,17 +110,25 @@ namespace OpenApiTests.NamingConvention.KebabCase
 
             toOneResourceRefId.Should().Be(expectedReferenceIdForToOneResourceResponseData);
             relationships.Should().HaveProperty(expectedPropertyNameForToManyRelationship);
-            string toManyResourceRefId = document.SelectTokenOrError($"components.schemas.{relationshipsRefId}.properties.cashiers.$ref").GetReferenceSchemaId();
+
+            string toManyResourceRefId =
+                document.SelectTokenOrError($"components.schemas.{relationshipsRefId}.properties.cashiers.$ref").GetReferenceSchemaId();
+
             toManyResourceRefId.Should().Be(expectedReferenceIdForToManyResourceResponseData);
 
-            string relationshipLinksRefId = document.SelectTokenOrError($"components.schemas.{toOneResourceRefId}.properties.links.$ref").GetReferenceSchemaId();
+            string relationshipLinksRefId =
+                document.SelectTokenOrError($"components.schemas.{toOneResourceRefId}.properties.links.$ref").GetReferenceSchemaId();
+
             relationshipLinksRefId.Should().Be(expectedReferenceIdForLinksInRelationshipObject);
 
             string resourceIdentifierRefId = document.SelectTokenOrError($"components.schemas.{toOneResourceRefId}.properties.data.oneOf[0].$ref")
                 .GetReferenceSchemaId();
 
             resourceIdentifierRefId.Should().Be(expectedReferenceIdForResourceIdentifier);
-            string nullValueRefId = document.SelectTokenOrError($"components.schemas.{toOneResourceRefId}.properties.data.oneOf[1].$ref").GetReferenceSchemaId();
+
+            string nullValueRefId = document.SelectTokenOrError($"components.schemas.{toOneResourceRefId}.properties.data.oneOf[1].$ref")
+                .GetReferenceSchemaId();
+
             nullValueRefId.Should().Be(expectedReferenceIdForNullValue);
 
             string relatedResourceTypeReferenceSchema =
@@ -167,6 +168,37 @@ namespace OpenApiTests.NamingConvention.KebabCase
 
             string topLevelLinksRefId = document.SelectTokenOrError($"components.schemas.{responseRefId}.properties.links.$ref").GetReferenceSchemaId();
             topLevelLinksRefId.Should().Be(expectedReferenceIdForTopLevelLinks);
+        }
+
+        private async Task<string> GetAsync(string requestUrl)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+
+            using HttpClient client = _testContext.Factory.CreateClient();
+            HttpResponseMessage responseMessage = await client.SendAsync(request);
+
+            return await responseMessage.Content.ReadAsStringAsync();
+        }
+
+        private async Task WriteToSwaggerDocumentsFolderAsync(string content)
+        {
+            string path = GetSwaggerDocumentPath(nameof(KebabCase));
+            await File.WriteAllTextAsync(path, content);
+        }
+
+        private string GetSwaggerDocumentPath(string fileName)
+        {
+            string testDirectoryPath = Directory.GetParent(Environment.CurrentDirectory)!.Parent!.Parent!.Parent!.FullName;
+            string namespacePathRelativeToTestDirectory = Path.Join(GetType().Namespace!.Split('.'));
+
+            string[] swaggerDocumentFilePathElements =
+            {
+                testDirectoryPath,
+                namespacePathRelativeToTestDirectory,
+                $"{fileName}.json"
+            };
+
+            return Path.Join(swaggerDocumentFilePathElements);
         }
     }
 }
