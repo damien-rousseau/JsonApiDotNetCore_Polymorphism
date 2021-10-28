@@ -3,11 +3,11 @@
         <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
     </PropertyGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\..\src\JsonApiDotNetCore.OpenApi.Client\JsonApiDotNetCore.OpenApi.Client.csproj"/>
-        <ProjectReference Include="..\OpenApiTests\OpenApiTests.csproj"/>
-        <ProjectReference Include="..\TestBuildingBlocks\TestBuildingBlocks.csproj"/>
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\JsonApiDotNetCore.OpenApi.Client\JsonApiDotNetCore.OpenApi.Client.csproj" />
+    <ProjectReference Include="..\OpenApiTests\OpenApiTests.csproj" />
+    <ProjectReference Include="..\TestBuildingBlocks\TestBuildingBlocks.csproj" />
+  </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="$(CoverletVersion)" PrivateAssets="All"/>
