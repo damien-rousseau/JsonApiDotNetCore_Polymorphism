@@ -1,8 +1,9 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using FluentAssertions.Execution;
 
 namespace TestBuildingBlocks
 {
+    // TODO: Make this a nested type (see HttpResponseMessageExtensions for example)
     public sealed class JsonElementAssertions : JsonElementAssertions<JsonElementAssertions>
     {
         internal JsonElementAssertions(JsonElement subject)
@@ -14,20 +15,19 @@ namespace TestBuildingBlocks
     public class JsonElementAssertions<TAssertions>
         where TAssertions : JsonElementAssertions<TAssertions>
     {
-        /// <summary>
-        /// - Gets the object which value is being asserted.
-        /// </summary>
-        private JsonElement Subject { get; }
+        private readonly JsonElement _subject;
 
         protected JsonElementAssertions(JsonElement subject)
         {
-            Subject = subject;
+            _subject = subject;
         }
 
-        public void HaveProperty(string propertyName, string because = "", params object[] becauseArgs)
+        public void ContainProperty(string propertyName)
         {
-            Execute.Assertion.ForCondition(Subject.TryGetProperty(propertyName, out _)).BecauseOf(because, becauseArgs)
-                .FailWith($"Expected element to have property with name '{propertyName}, but did not find it.");
+            string escapedJson = _subject.ToString()?.Replace("{", "{{").Replace("}", "}}");
+
+            Execute.Assertion.ForCondition(_subject.TryGetProperty(propertyName, out _))
+                .FailWith($"Expected JSON element '{escapedJson}' to contain a property named '{propertyName}'.");
         }
     }
 }
