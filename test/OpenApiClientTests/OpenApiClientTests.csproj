@@ -33,7 +33,7 @@
       <Namespace>OpenApiClientTests.LegacyClient.GeneratedCode</Namespace>
       <ClassName>OpenApiClient</ClassName>
       <CodeGenerator>NSwagCSharp</CodeGenerator>
-      <Options>/UseBaseUrl:false /GenerateClientInterfaces:true /ClientClassAccessModifier:internal</Options>
+      <Options>/UseBaseUrl:false /GenerateClientInterfaces:true /ClientClassAccessModifier:internal /GenerateExceptionClasses:false /AdditionalNamespaceUsages:OpenApiClientTests.Exceptions</Options>
     </OpenApiReference>
   </ItemGroup>
 
