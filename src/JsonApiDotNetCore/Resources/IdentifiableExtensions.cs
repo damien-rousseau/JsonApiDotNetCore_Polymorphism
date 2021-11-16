@@ -35,5 +35,22 @@ namespace JsonApiDotNetCore.Resources
 
             return propertyValue!;
         }
+
+        public static string? GetVersion(this IIdentifiable identifiable)
+        {
+            ArgumentGuard.NotNull(identifiable, nameof(identifiable));
+
+            return identifiable is IVersionedIdentifiable versionedIdentifiable ? versionedIdentifiable.Version : null;
+        }
+
+        public static void SetVersion(this IIdentifiable identifiable, string? version)
+        {
+            ArgumentGuard.NotNull(identifiable, nameof(identifiable));
+
+            if (identifiable is IVersionedIdentifiable versionedIdentifiable)
+            {
+                versionedIdentifiable.Version = version;
+            }
+        }
     }
 }

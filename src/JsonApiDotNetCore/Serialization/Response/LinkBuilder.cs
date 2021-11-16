@@ -259,8 +259,10 @@ namespace JsonApiDotNetCore.Serialization.Response
 
         private string? GetLinkForResourceSelf(ResourceType resourceType, IIdentifiable resource)
         {
+            string? version = resource.GetVersion();
+
             string? controllerName = _controllerResourceMapping.GetControllerNameForResourceType(resourceType);
-            IDictionary<string, object?> routeValues = GetRouteValues(resource.StringId!, null);
+            IDictionary<string, object?> routeValues = GetRouteValues(resource.StringId!, version, null);
 
             return RenderLinkForAction(controllerName, GetPrimaryControllerActionName, routeValues);
         }
@@ -275,7 +277,8 @@ namespace JsonApiDotNetCore.Serialization.Response
 
             if (ShouldIncludeRelationshipLink(LinkTypes.Self, relationship))
             {
-                links.Self = GetLinkForRelationshipSelf(leftResource.StringId!, relationship);
+                string? leftVersion = leftResource.GetVersion();
+                links.Self = GetLinkForRelationshipSelf(leftResource.StringId!, leftVersion, relationship);
             }
 
             if (ShouldIncludeRelationshipLink(LinkTypes.Related, relationship))
@@ -286,10 +289,10 @@ namespace JsonApiDotNetCore.Serialization.Response
             return links.HasValue() ? links : null;
         }
 
-        private string? GetLinkForRelationshipSelf(string leftId, RelationshipAttribute relationship)
+        private string? GetLinkForRelationshipSelf(string leftId, string? leftVersion, RelationshipAttribute relationship)
         {
             string? controllerName = _controllerResourceMapping.GetControllerNameForResourceType(relationship.LeftType);
-            IDictionary<string, object?> routeValues = GetRouteValues(leftId, relationship.PublicName);
+            IDictionary<string, object?> routeValues = GetRouteValues(leftId, leftVersion, relationship.PublicName);
 
             return RenderLinkForAction(controllerName, GetRelationshipControllerActionName, routeValues);
         }
@@ -297,12 +300,12 @@ namespace JsonApiDotNetCore.Serialization.Response
         private string? GetLinkForRelationshipRelated(string leftId, RelationshipAttribute relationship)
         {
             string? controllerName = _controllerResourceMapping.GetControllerNameForResourceType(relationship.LeftType);
-            IDictionary<string, object?> routeValues = GetRouteValues(leftId, relationship.PublicName);
+            IDictionary<string, object?> routeValues = GetRouteValues(leftId, null, relationship.PublicName);
 
             return RenderLinkForAction(controllerName, GetSecondaryControllerActionName, routeValues);
         }
 
-        private IDictionary<string, object?> GetRouteValues(string primaryId, string? relationshipName)
+        private IDictionary<string, object?> GetRouteValues(string primaryId, string? primaryVersion, string? relationshipName)
         {
             // By default, we copy all route parameters from the *current* endpoint, which helps in case all endpoints have the same
             // set of non-standard parameters. There is no way we can know which non-standard parameters a *different* endpoint needs,
@@ -310,6 +313,7 @@ namespace JsonApiDotNetCore.Serialization.Response
             RouteValueDictionary routeValues = HttpContext.Request.RouteValues;
 
             routeValues["id"] = primaryId;
+            routeValues["version"] = primaryVersion;
             routeValues["relationshipName"] = relationshipName;
 
             return routeValues;

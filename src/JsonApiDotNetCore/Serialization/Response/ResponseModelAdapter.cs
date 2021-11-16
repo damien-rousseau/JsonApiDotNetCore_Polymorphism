@@ -196,7 +196,8 @@ namespace JsonApiDotNetCore.Serialization.Response
             var resourceObject = new ResourceObject
             {
                 Type = resourceType.PublicName,
-                Id = resource.StringId
+                Id = resource.StringId,
+                Version = resource.GetVersion()
             };
 
             if (!isRelationship)
@@ -316,7 +317,8 @@ namespace JsonApiDotNetCore.Serialization.Response
                 IEnumerable<ResourceIdentifierObject> resourceIdentifierObjects = rightNodes.Select(rightNode => new ResourceIdentifierObject
                 {
                     Type = rightNode.ResourceType.PublicName,
-                    Id = rightNode.ResourceObject.Id
+                    Id = rightNode.ResourceObject.Id,
+                    Version = rightNode.ResourceObject.Version
                 });
 
                 return relationship is HasOneAttribute

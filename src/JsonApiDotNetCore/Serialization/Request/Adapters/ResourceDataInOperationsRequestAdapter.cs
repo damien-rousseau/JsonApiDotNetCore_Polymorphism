@@ -21,6 +21,7 @@ namespace JsonApiDotNetCore.Serialization.Request.Adapters
 
             state.WritableRequest!.PrimaryResourceType = resourceType;
             state.WritableRequest.PrimaryId = resource.StringId;
+            state.WritableRequest.PrimaryVersion = resource.GetVersion();
 
             return (resource, resourceType);
         }

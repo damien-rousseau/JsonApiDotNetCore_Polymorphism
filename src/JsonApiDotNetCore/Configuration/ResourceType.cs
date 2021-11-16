@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
+using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 
 namespace JsonApiDotNetCore.Configuration
@@ -29,6 +30,11 @@ namespace JsonApiDotNetCore.Configuration
         /// The CLR type of the resource identity.
         /// </summary>
         public Type IdentityClrType { get; }
+
+        /// <summary>
+        /// When <c>true</c>, this resource type uses optimistic concurrency.
+        /// </summary>
+        public bool IsVersioned => ClrType.IsOrImplementsInterface<IVersionedIdentifiable>();
 
         /// <summary>
         /// Exposed resource attributes and relationships. See https://jsonapi.org/format/#document-resource-object-fields.

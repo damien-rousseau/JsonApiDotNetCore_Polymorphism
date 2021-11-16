@@ -268,12 +268,12 @@ namespace JsonApiDotNetCore.Serialization.Response
                     return false;
                 }
 
-                return x.Type == y.Type && x.Id == y.Id && x.Lid == y.Lid;
+                return x.Type == y.Type && x.Id == y.Id && x.Lid == y.Lid && x.Version == y.Version;
             }
 
             public int GetHashCode(ResourceObject obj)
             {
-                return HashCode.Combine(obj.Type, obj.Id, obj.Lid);
+                return HashCode.Combine(obj.Type, obj.Id, obj.Lid, obj.Version);
             }
         }
     }

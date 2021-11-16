@@ -21,6 +21,10 @@ namespace JsonApiDotNetCore.Serialization.Objects
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Lid { get; set; }
 
+        [JsonPropertyName("version")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Version { get; set; }
+
         [JsonPropertyName("relationship")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Relationship { get; set; }

@@ -105,6 +105,8 @@ namespace JsonApiDotNetCore.Serialization.Request.Adapters
             IIdentifiable resource = _resourceFactory.CreateInstance(resourceClrType);
             AssignStringId(identity, resource, state);
             resource.LocalId = identity.Lid;
+            resource.SetVersion(identity.Version);
+
             return resource;
         }
 

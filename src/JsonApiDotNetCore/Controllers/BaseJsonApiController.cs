@@ -210,8 +210,9 @@ namespace JsonApiDotNetCore.Controllers
 
             TResource? newResource = await _create.CreateAsync(resource, cancellationToken);
 
-            string resourceId = (newResource ?? resource).StringId!;
-            string locationUrl = $"{HttpContext.Request.Path}/{resourceId}";
+            TResource resultResource = newResource ?? resource;
+            string? resourceVersion = resultResource.GetVersion();
+            string locationUrl = $"{HttpContext.Request.Path}/{resultResource.StringId}{(resourceVersion != null ? $";v~{resourceVersion}" : null)}";
 
             if (newResource == null)
             {
@@ -225,6 +226,9 @@ namespace JsonApiDotNetCore.Controllers
         /// <summary>
         /// Adds resources to a to-many relationship. Example: <code><![CDATA[
         /// POST /articles/1/revisions HTTP/1.1
+        /// ]]></code> Example:
+        /// <code><![CDATA[
+        /// POST /articles/1;v~8/revisions HTTP/1.1
         /// ]]></code>
         /// </summary>
         /// <param name="id">
@@ -266,6 +270,9 @@ namespace JsonApiDotNetCore.Controllers
         /// Updates the attributes and/or relationships of an existing resource. Only the values of sent attributes are replaced. And only the values of sent
         /// relationships are replaced. Example: <code><![CDATA[
         /// PATCH /articles/1 HTTP/1.1
+        /// ]]></code> Example:
+        /// <code><![CDATA[
+        /// PATCH /articles/1;v~8 HTTP/1.1
         /// ]]></code>
         /// </summary>
         public virtual async Task<IActionResult> PatchAsync(TId id, [FromBody] TResource resource, CancellationToken cancellationToken)
@@ -299,7 +306,13 @@ namespace JsonApiDotNetCore.Controllers
         /// PATCH /articles/1/relationships/author HTTP/1.1
         /// ]]></code> Example:
         /// <code><![CDATA[
+        /// PATCH /articles/1;v~8/relationships/author HTTP/1.1
+        /// ]]></code> Example:
+        /// <code><![CDATA[
         /// PATCH /articles/1/relationships/revisions HTTP/1.1
+        /// ]]></code> Example:
+        /// <code><![CDATA[
+        /// PATCH /articles/1;v~8/relationships/revisions HTTP/1.1
         /// ]]></code>
         /// </summary>
         /// <param name="id">
@@ -339,6 +352,9 @@ namespace JsonApiDotNetCore.Controllers
         /// <summary>
         /// Deletes an existing resource. Example: <code><![CDATA[
         /// DELETE /articles/1 HTTP/1.1
+        /// ]]></code> Example:
+        /// <code><![CDATA[
+        /// DELETE /articles/1;v~8 HTTP/1.1
         /// ]]></code>
         /// </summary>
         public virtual async Task<IActionResult> DeleteAsync(TId id, CancellationToken cancellationToken)
@@ -361,6 +377,9 @@ namespace JsonApiDotNetCore.Controllers
         /// <summary>
         /// Removes resources from a to-many relationship. Example: <code><![CDATA[
         /// DELETE /articles/1/relationships/revisions HTTP/1.1
+        /// ]]></code> Example:
+        /// <code><![CDATA[
+        /// DELETE /articles/1;v~8/relationships/revisions HTTP/1.1
         /// ]]></code>
         /// </summary>
         /// <param name="id">

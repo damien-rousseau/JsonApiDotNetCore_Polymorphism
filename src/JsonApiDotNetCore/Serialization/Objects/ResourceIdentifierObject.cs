@@ -22,6 +22,10 @@ namespace JsonApiDotNetCore.Serialization.Objects
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Lid { get; set; }
 
+        [JsonPropertyName("version")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Version { get; set; }
+
         [JsonPropertyName("meta")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public IDictionary<string, object?>? Meta { get; set; }

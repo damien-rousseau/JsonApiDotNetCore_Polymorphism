@@ -16,7 +16,7 @@ namespace JsonApiDotNetCore
         /// <summary>
         /// Whether the specified source type implements or equals the specified interface. This overload enables to test for an open generic interface.
         /// </summary>
-        private static bool IsOrImplementsInterface(this Type? source, Type interfaceType)
+        public static bool IsOrImplementsInterface(this Type? source, Type interfaceType)
         {
             ArgumentGuard.NotNull(interfaceType, nameof(interfaceType));
 
