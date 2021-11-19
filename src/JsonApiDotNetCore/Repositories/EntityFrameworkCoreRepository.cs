@@ -31,6 +31,7 @@ namespace JsonApiDotNetCore.Repositories
         where TResource : class, IIdentifiable<TId>
     {
         private readonly CollectionConverter _collectionConverter = new();
+        private readonly IJsonApiRequest _request;
         private readonly ITargetedFields _targetedFields;
         private readonly DbContext _dbContext;
         private readonly IResourceGraph _resourceGraph;
@@ -42,24 +43,26 @@ namespace JsonApiDotNetCore.Repositories
         /// <inheritdoc />
         public virtual string? TransactionId => _dbContext.Database.CurrentTransaction?.TransactionId.ToString();
 
-        public EntityFrameworkCoreRepository(ITargetedFields targetedFields, IDbContextResolver dbContextResolver, IResourceGraph resourceGraph,
-            IResourceFactory resourceFactory, IEnumerable<IQueryConstraintProvider> constraintProviders, ILoggerFactory loggerFactory,
-            IResourceDefinitionAccessor resourceDefinitionAccessor)
+        public EntityFrameworkCoreRepository(IJsonApiRequest request, ITargetedFields targetedFields, IDbContextResolver dbContextResolver,
+            IResourceGraph resourceGraph, IResourceFactory resourceFactory, IResourceDefinitionAccessor resourceDefinitionAccessor,
+            IEnumerable<IQueryConstraintProvider> constraintProviders, ILoggerFactory loggerFactory)
         {
+            ArgumentGuard.NotNull(request, nameof(request));
             ArgumentGuard.NotNull(targetedFields, nameof(targetedFields));
             ArgumentGuard.NotNull(dbContextResolver, nameof(dbContextResolver));
             ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
             ArgumentGuard.NotNull(resourceFactory, nameof(resourceFactory));
+            ArgumentGuard.NotNull(resourceDefinitionAccessor, nameof(resourceDefinitionAccessor));
             ArgumentGuard.NotNull(constraintProviders, nameof(constraintProviders));
             ArgumentGuard.NotNull(loggerFactory, nameof(loggerFactory));
-            ArgumentGuard.NotNull(resourceDefinitionAccessor, nameof(resourceDefinitionAccessor));
 
+            _request = request;
             _targetedFields = targetedFields;
             _dbContext = dbContextResolver.GetContext();
             _resourceGraph = resourceGraph;
             _resourceFactory = resourceFactory;
-            _constraintProviders = constraintProviders;
             _resourceDefinitionAccessor = resourceDefinitionAccessor;
+            _constraintProviders = constraintProviders;
             _traceWriter = new TraceLogWriter<EntityFrameworkCoreRepository<TResource, TId>>(loggerFactory);
         }
 
@@ -249,7 +252,11 @@ namespace JsonApiDotNetCore.Repositories
             using IDisposable _ = CodeTimingSessionManager.Current.Measure("Repository - Get resource for update");
 
             IReadOnlyCollection<TResource> resources = await GetAsync(queryLayer, cancellationToken);
-            return resources.FirstOrDefault();
+            TResource? resource = resources.FirstOrDefault();
+
+            resource?.RestoreConcurrencyToken(_dbContext, _request.PrimaryVersion);
+
+            return resource;
         }
 
         /// <inheritdoc />
@@ -323,6 +330,7 @@ namespace JsonApiDotNetCore.Repositories
             // If so, we'll reuse the tracked resource instead of this placeholder resource.
             var placeholderResource = _resourceFactory.CreateInstance<TResource>();
             placeholderResource.Id = id;
+            placeholderResource.RestoreConcurrencyToken(_dbContext, _request.PrimaryVersion);
 
             await _resourceDefinitionAccessor.OnWritingAsync(placeholderResource, WriteOperationKind.DeleteResource, cancellationToken);
 
@@ -502,6 +510,17 @@ namespace JsonApiDotNetCore.Repositories
 
                 if (!rightResourceIdsToStore.SetEquals(rightResourceIdsStored))
                 {
+                    if (relationship.RightType.IsVersioned)
+                    {
+                        foreach (IIdentifiable rightResource in rightResourceIdsStored)
+                        {
+                            string? requestVersion = rightResourceIdsToRemove.Single(resource => resource.StringId == rightResource.StringId).GetVersion();
+
+                            rightResource.RestoreConcurrencyToken(_dbContext, requestVersion);
+                            rightResource.RefreshConcurrencyValue();
+                        }
+                    }
+
                     AssertIsNotClearingRequiredToOneRelationship(relationship, leftResourceTracked, rightResourceIdsToStore);
 
                     await UpdateRelationshipAsync(relationship, leftResourceTracked, rightResourceIdsToStore, cancellationToken);
@@ -535,6 +554,9 @@ namespace JsonApiDotNetCore.Repositories
                 await entityEntry.Reference(inversePropertyName).LoadAsync(cancellationToken);
             }
 
+            leftResource.RestoreConcurrencyToken(_dbContext, _request.PrimaryVersion);
+            leftResource.RefreshConcurrencyValue();
+
             relationship.SetValue(leftResource, trackedValueToAssign);
         }
 
@@ -547,6 +569,13 @@ namespace JsonApiDotNetCore.Repositories
 
             ICollection<IIdentifiable> rightResources = _collectionConverter.ExtractResources(rightValue);
             IIdentifiable[] rightResourcesTracked = rightResources.Select(rightResource => _dbContext.GetTrackedOrAttach(rightResource)).ToArray();
+
+            foreach (var rightResourceTracked in rightResourcesTracked)
+            {
+                string? rightVersion = rightResourceTracked.GetVersion();
+                rightResourceTracked.RestoreConcurrencyToken(_dbContext, rightVersion);
+                rightResourceTracked.RefreshConcurrencyValue();
+            }
 
             return rightValue is IEnumerable
                 ? _collectionConverter.CopyToTypedCollection(rightResourcesTracked, relationshipPropertyType)
@@ -573,7 +602,7 @@ namespace JsonApiDotNetCore.Repositories
             {
                 _dbContext.ResetChangeTracker();
 
-                throw new DataStoreUpdateException(exception);
+                throw exception is DbUpdateConcurrencyException ? new DataStoreConcurrencyException(exception) : new DataStoreUpdateException(exception);
             }
         }
     }

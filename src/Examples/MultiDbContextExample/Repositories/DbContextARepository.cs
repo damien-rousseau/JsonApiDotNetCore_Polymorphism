@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using JsonApiDotNetCore.Configuration;
+using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Queries;
 using JsonApiDotNetCore.Repositories;
 using JsonApiDotNetCore.Resources;
@@ -13,10 +14,10 @@ namespace MultiDbContextExample.Repositories
     public sealed class DbContextARepository<TResource> : EntityFrameworkCoreRepository<TResource, int>
         where TResource : class, IIdentifiable<int>
     {
-        public DbContextARepository(ITargetedFields targetedFields, DbContextResolver<DbContextA> dbContextResolver, IResourceGraph resourceGraph,
-            IResourceFactory resourceFactory, IEnumerable<IQueryConstraintProvider> constraintProviders, ILoggerFactory loggerFactory,
-            IResourceDefinitionAccessor resourceDefinitionAccessor)
-            : base(targetedFields, dbContextResolver, resourceGraph, resourceFactory, constraintProviders, loggerFactory, resourceDefinitionAccessor)
+        public DbContextARepository(IJsonApiRequest request, ITargetedFields targetedFields, DbContextResolver<DbContextA> dbContextResolver,
+            IResourceGraph resourceGraph, IResourceFactory resourceFactory, IResourceDefinitionAccessor resourceDefinitionAccessor,
+            IEnumerable<IQueryConstraintProvider> constraintProviders, ILoggerFactory loggerFactory)
+            : base(request, targetedFields, dbContextResolver, resourceGraph, resourceFactory, resourceDefinitionAccessor, constraintProviders, loggerFactory)
         {
         }
     }

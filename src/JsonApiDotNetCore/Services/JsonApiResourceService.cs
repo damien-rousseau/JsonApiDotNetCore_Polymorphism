@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ using JsonApiDotNetCore.Queries.Expressions;
 using JsonApiDotNetCore.Repositories;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
+using JsonApiDotNetCore.Serialization.Objects;
 using Microsoft.Extensions.Logging;
 using SysNotNull = System.Diagnostics.CodeAnalysis.NotNullAttribute;
 
@@ -224,10 +226,11 @@ namespace JsonApiDotNetCore.Services
             {
                 await _repositoryAccessor.CreateAsync(resourceFromRequest, resourceForDatabase, cancellationToken);
             }
-            catch (DataStoreUpdateException)
+            catch (DataStoreUpdateException exception)
             {
                 await AssertPrimaryResourceDoesNotExistAsync(resourceFromRequest, cancellationToken);
                 await AssertResourcesToAssignInRelationshipsExistAsync(resourceFromRequest, cancellationToken);
+                AssertIsNotResourceVersionMismatch(exception);
                 throw;
             }
 
@@ -325,10 +328,11 @@ namespace JsonApiDotNetCore.Services
             {
                 await _repositoryAccessor.AddToToManyRelationshipAsync<TResource, TId>(leftId, rightResourceIds, cancellationToken);
             }
-            catch (DataStoreUpdateException)
+            catch (DataStoreUpdateException exception)
             {
                 await GetPrimaryResourceByIdAsync(leftId, TopFieldSelection.OnlyIdAttribute, cancellationToken);
                 await AssertRightResourcesExistAsync(rightResourceIds, cancellationToken);
+                AssertIsNotResourceVersionMismatch(exception);
                 throw;
             }
         }
@@ -402,9 +406,10 @@ namespace JsonApiDotNetCore.Services
             {
                 await _repositoryAccessor.UpdateAsync(resourceFromRequest, resourceFromDatabase, cancellationToken);
             }
-            catch (DataStoreUpdateException)
+            catch (DataStoreUpdateException exception)
             {
                 await AssertResourcesToAssignInRelationshipsExistAsync(resourceFromRequest, cancellationToken);
+                AssertIsNotResourceVersionMismatch(exception);
                 throw;
             }
 
@@ -440,9 +445,10 @@ namespace JsonApiDotNetCore.Services
             {
                 await _repositoryAccessor.SetRelationshipAsync(resourceFromDatabase, rightValue, cancellationToken);
             }
-            catch (DataStoreUpdateException)
+            catch (DataStoreUpdateException exception)
             {
                 await AssertRightResourcesExistAsync(rightValue, cancellationToken);
+                AssertIsNotResourceVersionMismatch(exception);
                 throw;
             }
         }
@@ -461,9 +467,10 @@ namespace JsonApiDotNetCore.Services
             {
                 await _repositoryAccessor.DeleteAsync<TResource, TId>(id, cancellationToken);
             }
-            catch (DataStoreUpdateException)
+            catch (DataStoreUpdateException exception)
             {
                 await GetPrimaryResourceByIdAsync(id, TopFieldSelection.OnlyIdAttribute, cancellationToken);
+                AssertIsNotResourceVersionMismatch(exception);
                 throw;
             }
         }
@@ -491,7 +498,15 @@ namespace JsonApiDotNetCore.Services
 
             await AssertRightResourcesExistAsync(rightResourceIds, cancellationToken);
 
-            await _repositoryAccessor.RemoveFromToManyRelationshipAsync(resourceFromDatabase, rightResourceIds, cancellationToken);
+            try
+            {
+                await _repositoryAccessor.RemoveFromToManyRelationshipAsync(resourceFromDatabase, rightResourceIds, cancellationToken);
+            }
+            catch (DataStoreUpdateException exception)
+            {
+                AssertIsNotResourceVersionMismatch(exception);
+                throw;
+            }
         }
 
         protected async Task<TResource> GetPrimaryResourceByIdAsync(TId id, TopFieldSelection fieldSelection, CancellationToken cancellationToken)
@@ -521,6 +536,17 @@ namespace JsonApiDotNetCore.Services
             AssertPrimaryResourceExists(resource);
 
             return resource;
+        }
+
+        protected void AssertIsNotResourceVersionMismatch(DataStoreUpdateException exception)
+        {
+            if (exception is DataStoreConcurrencyException)
+            {
+                throw new JsonApiException(new ErrorObject(HttpStatusCode.Conflict)
+                {
+                    Title = exception.Message
+                }, exception);
+            }
         }
 
         [AssertionMethod]
