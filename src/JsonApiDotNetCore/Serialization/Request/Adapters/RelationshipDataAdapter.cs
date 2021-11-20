@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 using JsonApiDotNetCore.Serialization.Objects;
@@ -76,6 +77,8 @@ namespace JsonApiDotNetCore.Serialization.Request.Adapters
             {
                 ResourceType = relationship.RightType,
                 IdConstraint = JsonElementConstraint.Required,
+                VersionConstraint = !relationship.RightType.IsVersioned ? JsonElementConstraint.Forbidden :
+                    state.Request.Kind == EndpointKind.AtomicOperations ? null : JsonElementConstraint.Required,
                 RelationshipName = relationship.PublicName
             };
 

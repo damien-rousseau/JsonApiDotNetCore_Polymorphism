@@ -34,7 +34,7 @@ namespace JsonApiDotNetCore.Serialization.Request.Adapters
             ArgumentGuard.NotNull(state, nameof(state));
 
             ResourceType resourceType = ResolveType(identity, requirements, state);
-            IIdentifiable resource = CreateResource(identity, requirements, resourceType.ClrType, state);
+            IIdentifiable resource = CreateResource(identity, requirements, resourceType, state);
 
             return (resource, resourceType);
         }
@@ -80,7 +80,7 @@ namespace JsonApiDotNetCore.Serialization.Request.Adapters
             }
         }
 
-        private IIdentifiable CreateResource(IResourceIdentity identity, ResourceIdentityRequirements requirements, Type resourceClrType,
+        private IIdentifiable CreateResource(IResourceIdentity identity, ResourceIdentityRequirements requirements, ResourceType resourceType,
             RequestAdapterState state)
         {
             if (state.Request.Kind != EndpointKind.AtomicOperations)
@@ -99,10 +99,20 @@ namespace JsonApiDotNetCore.Serialization.Request.Adapters
                 AssertHasNoId(identity, state);
             }
 
+            if (requirements.VersionConstraint == JsonElementConstraint.Required)
+            {
+                AssertHasVersion(identity, state);
+            }
+            else if (!resourceType.IsVersioned || requirements.VersionConstraint == JsonElementConstraint.Forbidden)
+            {
+                AssertHasNoVersion(identity, state);
+            }
+
             AssertSameIdValue(identity, requirements.IdValue, state);
             AssertSameLidValue(identity, requirements.LidValue, state);
+            AssertSameVersionValue(identity, requirements.VersionValue, state);
 
-            IIdentifiable resource = _resourceFactory.CreateInstance(resourceClrType);
+            IIdentifiable resource = _resourceFactory.CreateInstance(resourceType.ClrType);
             AssignStringId(identity, resource, state);
             resource.LocalId = identity.Lid;
             resource.SetVersion(identity.Version);
@@ -159,6 +169,23 @@ namespace JsonApiDotNetCore.Serialization.Request.Adapters
             }
         }
 
+        private static void AssertHasVersion(IResourceIdentity identity, RequestAdapterState state)
+        {
+            if (identity.Version == null)
+            {
+                throw new ModelConversionException(state.Position, "The 'version' element is required.", null);
+            }
+        }
+
+        private static void AssertHasNoVersion(IResourceIdentity identity, RequestAdapterState state)
+        {
+            if (identity.Version != null)
+            {
+                using IDisposable _ = state.Position.PushElement("version");
+                throw new ModelConversionException(state.Position, "Unexpected 'version' element.", null);
+            }
+        }
+
         private static void AssertSameIdValue(IResourceIdentity identity, string? expected, RequestAdapterState state)
         {
             if (expected != null && identity.Id != expected)
@@ -178,6 +205,17 @@ namespace JsonApiDotNetCore.Serialization.Request.Adapters
 
                 throw new ModelConversionException(state.Position, "Conflicting 'lid' values found.", $"Expected '{expected}' instead of '{identity.Lid}'.",
                     HttpStatusCode.Conflict);
+            }
+        }
+
+        private static void AssertSameVersionValue(IResourceIdentity identity, string? expected, RequestAdapterState state)
+        {
+            if (expected != null && identity.Version != expected)
+            {
+                using IDisposable _ = state.Position.PushElement("version");
+
+                throw new ModelConversionException(state.Position, "Conflicting 'version' values found.",
+                    $"Expected '{expected}' instead of '{identity.Version}'.", HttpStatusCode.Conflict);
             }
         }
 

@@ -15,6 +15,7 @@ namespace JsonApiDotNetCoreTests.IntegrationTests.OptimisticConcurrency
         public DbSet<WebImage> WebImages => Set<WebImage>();
         public DbSet<PageFooter> PageFooters => Set<PageFooter>();
         public DbSet<WebLink> WebLinks => Set<WebLink>();
+        public DbSet<DeploymentJob> DeploymentJobs => Set<DeploymentJob>();
 
         public ConcurrencyDbContext(DbContextOptions<ConcurrencyDbContext> options)
             : base(options)
