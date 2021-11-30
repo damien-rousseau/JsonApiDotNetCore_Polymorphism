@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using JsonApiDotNetCore.AtomicOperations;
 using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Queries;
@@ -23,8 +24,9 @@ namespace JsonApiDotNetCoreTests.IntegrationTests.MultiTenancy
 
         public MultiTenantResourceService(ITenantProvider tenantProvider, IResourceRepositoryAccessor repositoryAccessor,
             IQueryLayerComposer queryLayerComposer, IPaginationContext paginationContext, IJsonApiOptions options, ILoggerFactory loggerFactory,
-            IJsonApiRequest request, IResourceChangeTracker<TResource> resourceChangeTracker, IResourceDefinitionAccessor resourceDefinitionAccessor)
-            : base(repositoryAccessor, queryLayerComposer, paginationContext, options, loggerFactory, request, resourceChangeTracker,
+            IJsonApiRequest request, IResourceChangeTracker<TResource> resourceChangeTracker, IVersionTracker versionTracker,
+            IResourceDefinitionAccessor resourceDefinitionAccessor)
+            : base(repositoryAccessor, queryLayerComposer, paginationContext, options, loggerFactory, request, resourceChangeTracker, versionTracker,
                 resourceDefinitionAccessor)
         {
             _tenantProvider = tenantProvider;

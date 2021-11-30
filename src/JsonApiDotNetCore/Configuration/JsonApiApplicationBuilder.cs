@@ -278,6 +278,7 @@ namespace JsonApiDotNetCore.Configuration
             _services.AddScoped<IOperationsProcessor, OperationsProcessor>();
             _services.AddScoped<IOperationProcessorAccessor, OperationProcessorAccessor>();
             _services.AddScoped<ILocalIdTracker, LocalIdTracker>();
+            _services.AddScoped<IVersionTracker, VersionTracker>();
         }
 
         public void Dispose()

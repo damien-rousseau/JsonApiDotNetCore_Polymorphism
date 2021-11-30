@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using JsonApiDotNetCore.AtomicOperations;
 using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Queries;
@@ -14,8 +15,9 @@ namespace DiscoveryTests
     {
         public PrivateResourceService(IResourceRepositoryAccessor repositoryAccessor, IQueryLayerComposer queryLayerComposer,
             IPaginationContext paginationContext, IJsonApiOptions options, ILoggerFactory loggerFactory, IJsonApiRequest request,
-            IResourceChangeTracker<PrivateResource> resourceChangeTracker, IResourceDefinitionAccessor resourceDefinitionAccessor)
-            : base(repositoryAccessor, queryLayerComposer, paginationContext, options, loggerFactory, request, resourceChangeTracker,
+            IResourceChangeTracker<PrivateResource> resourceChangeTracker, IVersionTracker versionTracker,
+            IResourceDefinitionAccessor resourceDefinitionAccessor)
+            : base(repositoryAccessor, queryLayerComposer, paginationContext, options, loggerFactory, request, resourceChangeTracker, versionTracker,
                 resourceDefinitionAccessor)
         {
         }

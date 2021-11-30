@@ -19,6 +19,7 @@ namespace JsonApiDotNetCore.AtomicOperations
         private readonly IOperationProcessorAccessor _operationProcessorAccessor;
         private readonly IOperationsTransactionFactory _operationsTransactionFactory;
         private readonly ILocalIdTracker _localIdTracker;
+        private readonly IVersionTracker _versionTracker;
         private readonly IResourceGraph _resourceGraph;
         private readonly IJsonApiRequest _request;
         private readonly ITargetedFields _targetedFields;
@@ -26,12 +27,13 @@ namespace JsonApiDotNetCore.AtomicOperations
         private readonly LocalIdValidator _localIdValidator;
 
         public OperationsProcessor(IOperationProcessorAccessor operationProcessorAccessor, IOperationsTransactionFactory operationsTransactionFactory,
-            ILocalIdTracker localIdTracker, IResourceGraph resourceGraph, IJsonApiRequest request, ITargetedFields targetedFields,
-            ISparseFieldSetCache sparseFieldSetCache)
+            ILocalIdTracker localIdTracker, IVersionTracker versionTracker, IResourceGraph resourceGraph, IJsonApiRequest request,
+            ITargetedFields targetedFields, ISparseFieldSetCache sparseFieldSetCache)
         {
             ArgumentGuard.NotNull(operationProcessorAccessor, nameof(operationProcessorAccessor));
             ArgumentGuard.NotNull(operationsTransactionFactory, nameof(operationsTransactionFactory));
             ArgumentGuard.NotNull(localIdTracker, nameof(localIdTracker));
+            ArgumentGuard.NotNull(versionTracker, nameof(versionTracker));
             ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
             ArgumentGuard.NotNull(request, nameof(request));
             ArgumentGuard.NotNull(targetedFields, nameof(targetedFields));
@@ -40,6 +42,7 @@ namespace JsonApiDotNetCore.AtomicOperations
             _operationProcessorAccessor = operationProcessorAccessor;
             _operationsTransactionFactory = operationsTransactionFactory;
             _localIdTracker = localIdTracker;
+            _versionTracker = versionTracker;
             _resourceGraph = resourceGraph;
             _request = request;
             _targetedFields = targetedFields;
@@ -108,11 +111,15 @@ namespace JsonApiDotNetCore.AtomicOperations
             cancellationToken.ThrowIfCancellationRequested();
 
             TrackLocalIdsForOperation(operation);
+            RefreshVersionsForOperation(operation);
 
             _targetedFields.CopyFrom(operation.TargetedFields);
             _request.CopyFrom(operation.Request);
 
             return await _operationProcessorAccessor.ProcessAsync(operation, cancellationToken);
+
+            // Ideally we'd take the versions from response here and update the version cache, but currently
+            // not all resource service methods return data. Therefore this is handled elsewhere.
         }
 
         protected void TrackLocalIdsForOperation(OperationContainer operation)
@@ -146,6 +153,38 @@ namespace JsonApiDotNetCore.AtomicOperations
             {
                 ResourceType resourceType = _resourceGraph.GetResourceType(resource.GetType());
                 resource.StringId = _localIdTracker.GetValue(resource.LocalId, resourceType);
+            }
+        }
+
+        private void RefreshVersionsForOperation(OperationContainer operation)
+        {
+            if (operation.Request.PrimaryResourceType!.IsVersioned)
+            {
+                string? requestVersion = operation.Resource.GetVersion();
+
+                if (requestVersion == null)
+                {
+                    string? trackedVersion = _versionTracker.GetVersion(operation.Request.PrimaryResourceType, operation.Resource.StringId!);
+                    operation.Resource.SetVersion(trackedVersion);
+
+                    ((JsonApiRequest)operation.Request).PrimaryVersion = trackedVersion;
+                }
+            }
+
+            foreach (var rightResource in operation.GetSecondaryResources())
+            {
+                ResourceType rightResourceType = _resourceGraph.GetResourceType(rightResource.GetType());
+
+                if (rightResourceType.IsVersioned)
+                {
+                    string? requestVersion = rightResource.GetVersion();
+
+                    if (requestVersion == null)
+                    {
+                        string? trackedVersion = _versionTracker.GetVersion(rightResourceType, rightResource.StringId!);
+                        rightResource.SetVersion(trackedVersion);
+                    }
+                }
             }
         }
     }

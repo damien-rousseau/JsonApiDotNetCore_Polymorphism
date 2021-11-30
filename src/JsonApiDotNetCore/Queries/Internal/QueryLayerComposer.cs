@@ -401,6 +401,45 @@ namespace JsonApiDotNetCore.Queries.Internal
             return primaryLayer;
         }
 
+        public QueryLayer ComposeForGetVersionsAfterWrite<TId>(TId id, ResourceType primaryResourceType, TopFieldSelection fieldSelection)
+        {
+            ArgumentGuard.NotNull(primaryResourceType, nameof(primaryResourceType));
+
+            // @formatter:wrap_chained_method_calls chop_always
+            // @formatter:keep_existing_linebreaks true
+
+            IImmutableSet<IncludeElementExpression> includeElements = _targetedFields.Relationships
+                .Where(relationship => relationship.RightType.IsVersioned)
+                .Select(relationship => new IncludeElementExpression(relationship))
+                .ToImmutableHashSet();
+
+            // @formatter:keep_existing_linebreaks restore
+            // @formatter:wrap_chained_method_calls restore
+
+            AttrAttribute primaryIdAttribute = GetIdAttribute(primaryResourceType);
+
+            QueryLayer primaryLayer = new(primaryResourceType)
+            {
+                Include = includeElements.Any() ? new IncludeExpression(includeElements) : IncludeExpression.Empty,
+                Filter = CreateFilterByIds(id.AsArray(), primaryIdAttribute, null)
+            };
+
+            if (fieldSelection == TopFieldSelection.OnlyIdAttribute)
+            {
+                primaryLayer.Projection = new Dictionary<ResourceFieldAttribute, QueryLayer?>
+                {
+                    [primaryIdAttribute] = null
+                };
+
+                foreach (var include in includeElements)
+                {
+                    primaryLayer.Projection.Add(include.Relationship, null);
+                }
+            }
+
+            return primaryLayer;
+        }
+
         /// <inheritdoc />
         public IEnumerable<(QueryLayer, RelationshipAttribute)> ComposeForGetTargetedSecondaryResourceIds(IIdentifiable primaryResource)
         {

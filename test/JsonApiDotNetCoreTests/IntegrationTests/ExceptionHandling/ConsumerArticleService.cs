@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using JsonApiDotNetCore.AtomicOperations;
 using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Queries;
@@ -20,8 +21,9 @@ namespace JsonApiDotNetCoreTests.IntegrationTests.ExceptionHandling
 
         public ConsumerArticleService(IResourceRepositoryAccessor repositoryAccessor, IQueryLayerComposer queryLayerComposer,
             IPaginationContext paginationContext, IJsonApiOptions options, ILoggerFactory loggerFactory, IJsonApiRequest request,
-            IResourceChangeTracker<ConsumerArticle> resourceChangeTracker, IResourceDefinitionAccessor resourceDefinitionAccessor)
-            : base(repositoryAccessor, queryLayerComposer, paginationContext, options, loggerFactory, request, resourceChangeTracker,
+            IResourceChangeTracker<ConsumerArticle> resourceChangeTracker, IVersionTracker versionTracker,
+            IResourceDefinitionAccessor resourceDefinitionAccessor)
+            : base(repositoryAccessor, queryLayerComposer, paginationContext, options, loggerFactory, request, resourceChangeTracker, versionTracker,
                 resourceDefinitionAccessor)
         {
         }
