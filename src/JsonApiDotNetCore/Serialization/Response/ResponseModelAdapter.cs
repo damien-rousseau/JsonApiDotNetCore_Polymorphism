@@ -256,14 +256,23 @@ public class ResponseModelAdapter : IResponseModelAdapter
     private void TraverseRelationship(RelationshipAttribute relationship, IIdentifiable leftResource, ResourceObjectTreeNode leftTreeNode,
         IncludeElementExpression includeElement, EndpointKind kind)
     {
-        object? rightValue = relationship.GetValue(leftResource);
-        ICollection<IIdentifiable> rightResources = CollectionConverter.ExtractResources(rightValue);
-
-        leftTreeNode.EnsureHasRelationship(relationship);
-
-        foreach (IIdentifiable rightResource in rightResources)
+        try
         {
-            TraverseResource(rightResource, kind, includeElement.Children, leftTreeNode, relationship);
+            object? rightValue = relationship.GetValue(leftResource);
+            ICollection<IIdentifiable> rightResources = CollectionConverter.ExtractResources(rightValue);
+
+            leftTreeNode.EnsureHasRelationship(relationship);
+
+            foreach (IIdentifiable rightResource in rightResources)
+            {
+                TraverseResource(rightResource, kind, includeElement.Children, leftTreeNode, relationship);
+            }
+        }
+        catch (Exception)
+        {
+            // Ignored exception when the relationship is not found in the left resource.
+            // Recursive implemented in upper level to cover all resources inheriting of the resource CLR type
+            // to discover the included property in the right resource in case of polymorphism support
         }
     }
 
