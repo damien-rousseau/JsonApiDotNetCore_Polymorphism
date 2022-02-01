@@ -57,7 +57,25 @@ public class ResourceGraphBuilder
             relationship.RightType = rightType;
         }
 
+        RegisterChildrenClassesByClrTypes();
+
         return resourceGraph;
+    }
+
+    private void RegisterChildrenClassesByClrTypes()
+    {
+        var resourceTypes = _resourceTypesByClrType.Values;
+
+        foreach (ResourceType resourceType in resourceTypes)
+        {
+            IEnumerable<ResourceType> childResourceTypes = resourceTypes.Where(x =>
+                !x.Equals(resourceType) && x.ClrType.IsSubclassOf(resourceType.ClrType)).ToList();
+
+            if (childResourceTypes.Any())
+            {
+                resourceType.AddChildrenClrType(childResourceTypes.ToList());
+            }
+        }
     }
 
     public ResourceGraphBuilder Add(DbContext dbContext)

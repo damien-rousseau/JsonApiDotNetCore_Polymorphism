@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources.Annotations;
 
@@ -11,6 +12,7 @@ public sealed class ResourceType
 {
     private readonly Dictionary<string, ResourceFieldAttribute> _fieldsByPublicName = new();
     private readonly Dictionary<string, ResourceFieldAttribute> _fieldsByPropertyName = new();
+    private readonly List<ResourceType> _children = new();
 
     /// <summary>
     /// The publicly exposed resource name.
@@ -21,6 +23,11 @@ public sealed class ResourceType
     /// The CLR type of the resource.
     /// </summary>
     public Type ClrType { get; }
+
+    /// <summary>
+    /// The CLR types that inherit from this resource CRL type
+    /// </summary>
+    public IReadOnlyCollection<ResourceType> ChildrenClrTypes => _children.ToImmutableList();
 
     /// <summary>
     /// The CLR type of the resource identity.
@@ -213,5 +220,10 @@ public sealed class ResourceType
         hashCode.Add(RelationshipLinks);
 
         return hashCode.ToHashCode();
+    }
+
+    public void AddChildrenClrType(IEnumerable<ResourceType> childrenResourceTypes)
+    {
+        _children.AddRange(childrenResourceTypes);
     }
 }
