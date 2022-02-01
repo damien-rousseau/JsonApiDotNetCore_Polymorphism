@@ -8,10 +8,13 @@ namespace JsonApiDotNetCore.QueryStrings.Internal;
 
 public abstract class QueryStringParameterReader
 {
+    private readonly IJsonApiRequest _request;
     private readonly IResourceGraph _resourceGraph;
     private readonly bool _isCollectionRequest;
 
-    protected ResourceType RequestResourceType { get; }
+    // There are currently no query string readers that work with operations, so non-nullable for convenience.
+    protected ResourceType RequestResourceType => (_request.SecondaryResourceType ?? _request.PrimaryResourceType)!;
+
     protected bool IsAtomicOperationsRequest { get; }
 
     protected QueryStringParameterReader(IJsonApiRequest request, IResourceGraph resourceGraph)
@@ -19,10 +22,9 @@ public abstract class QueryStringParameterReader
         ArgumentGuard.NotNull(request, nameof(request));
         ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
 
+        _request = request;
         _resourceGraph = resourceGraph;
         _isCollectionRequest = request.IsCollection;
-        // There are currently no query string readers that work with operations, so non-nullable for convenience.
-        RequestResourceType = (request.SecondaryResourceType ?? request.PrimaryResourceType)!;
         IsAtomicOperationsRequest = request.Kind == EndpointKind.AtomicOperations;
     }
 
