@@ -170,7 +170,7 @@ internal sealed class JsonApiApplicationBuilder : IJsonApiApplicationBuilder, ID
         _services.AddScoped<IAsyncQueryStringActionFilter, AsyncQueryStringActionFilter>();
         _services.AddScoped<IAsyncConvertEmptyActionResultFilter, AsyncConvertEmptyActionResultFilter>();
         _services.AddSingleton<IJsonApiInputFormatter, JsonApiInputFormatter>();
-        _services.AddSingleton<IJsonApiOutputFormatter, JsonApiOutputFormatter>();
+        _services.AddSingleton<IJsonApiOutputFormatter>(_ => new JsonApiOutputFormatterDecorator(new JsonApiOutputFormatter()));
         _services.AddSingleton<IJsonApiRoutingConvention, JsonApiRoutingConvention>();
         _services.AddSingleton<IControllerResourceMapping>(sp => sp.GetRequiredService<IJsonApiRoutingConvention>());
         _services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
