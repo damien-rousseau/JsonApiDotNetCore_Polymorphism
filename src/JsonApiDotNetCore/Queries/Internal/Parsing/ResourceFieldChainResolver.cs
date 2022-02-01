@@ -59,12 +59,36 @@ internal sealed class ResourceFieldChainResolver
 
         foreach (string publicName in path.Split("."))
         {
-            RelationshipAttribute relationship = GetRelationship(publicName, nextResourceType, path);
+            // Search in the current resource type and all inheriting CLR types of the current resource type to resolve the relationship
+            var queue = new Queue<ResourceType>();
+            queue.Enqueue(nextResourceType);
+            nextResourceType.ChildrenClrTypes.ToList().ForEach(resource => queue.Enqueue(resource));
 
-            validateCallback?.Invoke(relationship, nextResourceType, path);
+            while (queue.Any())
+            {
+                nextResourceType = queue.Dequeue();
 
-            chainBuilder.Add(relationship);
-            nextResourceType = relationship.RightType;
+                try
+                {
+                    RelationshipAttribute relationship = GetRelationship(publicName, nextResourceType, path);
+
+                    validateCallback?.Invoke(relationship, nextResourceType, path);
+
+                    chainBuilder.Add(relationship);
+                    nextResourceType = relationship.RightType;
+                    break;
+                }
+                catch (Exception)
+                {
+                    if (!queue.Any())
+                    {
+                        // No relation found in inheriting CLR types
+                        throw;
+                    }
+
+                    // Continue to browse inheriting CLR types
+                }
+            }
         }
 
         return chainBuilder.ToImmutable();
