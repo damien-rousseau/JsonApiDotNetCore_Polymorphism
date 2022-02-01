@@ -27,6 +27,7 @@ public class ResponseModelAdapter : IResponseModelAdapter
     private readonly IResourceDefinitionAccessor _resourceDefinitionAccessor;
     private readonly IEvaluatedIncludeCache _evaluatedIncludeCache;
     private readonly IRequestQueryStringAccessor _requestQueryStringAccessor;
+    private readonly IResourceGraph _resourceGraph;
     private readonly ISparseFieldSetCache _sparseFieldSetCache;
 
     // Ensures that at most one ResourceObject (and one tree node) is produced per resource instance.
@@ -34,7 +35,7 @@ public class ResponseModelAdapter : IResponseModelAdapter
 
     public ResponseModelAdapter(IJsonApiRequest request, IJsonApiOptions options, ILinkBuilder linkBuilder, IMetaBuilder metaBuilder,
         IResourceDefinitionAccessor resourceDefinitionAccessor, IEvaluatedIncludeCache evaluatedIncludeCache, ISparseFieldSetCache sparseFieldSetCache,
-        IRequestQueryStringAccessor requestQueryStringAccessor)
+        IRequestQueryStringAccessor requestQueryStringAccessor, IResourceGraph resourceGraph)
     {
         ArgumentGuard.NotNull(request, nameof(request));
         ArgumentGuard.NotNull(options, nameof(options));
@@ -44,6 +45,7 @@ public class ResponseModelAdapter : IResponseModelAdapter
         ArgumentGuard.NotNull(evaluatedIncludeCache, nameof(evaluatedIncludeCache));
         ArgumentGuard.NotNull(sparseFieldSetCache, nameof(sparseFieldSetCache));
         ArgumentGuard.NotNull(requestQueryStringAccessor, nameof(requestQueryStringAccessor));
+        ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
 
         _request = request;
         _options = options;
@@ -53,6 +55,7 @@ public class ResponseModelAdapter : IResponseModelAdapter
         _evaluatedIncludeCache = evaluatedIncludeCache;
         _sparseFieldSetCache = sparseFieldSetCache;
         _requestQueryStringAccessor = requestQueryStringAccessor;
+        _resourceGraph = resourceGraph;
     }
 
     /// <inheritdoc />
@@ -70,11 +73,9 @@ public class ResponseModelAdapter : IResponseModelAdapter
 
         if (model is IEnumerable<IIdentifiable> resources)
         {
-            ResourceType resourceType = (_request.SecondaryResourceType ?? _request.PrimaryResourceType)!;
-
             foreach (IIdentifiable resource in resources)
             {
-                TraverseResource(resource, resourceType, _request.Kind, includeElements, rootNode, null);
+                TraverseResource(resource, _request.Kind, includeElements, rootNode, null);
             }
 
             PopulateRelationshipsInTree(rootNode, _request.Kind);
@@ -84,9 +85,7 @@ public class ResponseModelAdapter : IResponseModelAdapter
         }
         else if (model is IIdentifiable resource)
         {
-            ResourceType resourceType = (_request.SecondaryResourceType ?? _request.PrimaryResourceType)!;
-
-            TraverseResource(resource, resourceType, _request.Kind, includeElements, rootNode, null);
+            TraverseResource(resource, _request.Kind, includeElements, rootNode, null);
             PopulateRelationshipsInTree(rootNode, _request.Kind);
 
             ResourceObject resourceObject = rootNode.GetResponseData().Single();
@@ -130,10 +129,9 @@ public class ResponseModelAdapter : IResponseModelAdapter
         {
             _request.CopyFrom(operation.Request);
 
-            ResourceType resourceType = (operation.Request.SecondaryResourceType ?? operation.Request.PrimaryResourceType)!;
             var rootNode = ResourceObjectTreeNode.CreateRoot();
 
-            TraverseResource(operation.Resource, resourceType, operation.Request.Kind, includeElements, rootNode, null);
+            TraverseResource(operation.Resource, operation.Request.Kind, includeElements, rootNode, null);
             PopulateRelationshipsInTree(rootNode, operation.Request.Kind);
 
             resourceObject = rootNode.GetResponseData().Single();
@@ -146,6 +144,13 @@ public class ResponseModelAdapter : IResponseModelAdapter
         {
             Data = resourceObject == null ? default : new SingleOrManyData<ResourceObject>(resourceObject)
         };
+    }
+
+    private void TraverseResource(IIdentifiable resource, EndpointKind kind, IImmutableSet<IncludeElementExpression> includeElements,
+        ResourceObjectTreeNode parentTreeNode, RelationshipAttribute? parentRelationship)
+    {
+        var resourceType = _resourceGraph.GetResourceType(resource.GetType());
+        TraverseResource(resource, resourceType, kind, includeElements, parentTreeNode, parentRelationship);
     }
 
     private void TraverseResource(IIdentifiable resource, ResourceType resourceType, EndpointKind kind, IImmutableSet<IncludeElementExpression> includeElements,
@@ -258,7 +263,7 @@ public class ResponseModelAdapter : IResponseModelAdapter
 
         foreach (IIdentifiable rightResource in rightResources)
         {
-            TraverseResource(rightResource, relationship.RightType, kind, includeElement.Children, leftTreeNode, relationship);
+            TraverseResource(rightResource, kind, includeElement.Children, leftTreeNode, relationship);
         }
     }
 

@@ -50,9 +50,10 @@ public abstract class SerializationBenchmarkBase
         var resourceDefinitionAccessor = new FakeResourceDefinitionAccessor();
         var sparseFieldSetCache = new SparseFieldSetCache(constraintProviders, resourceDefinitionAccessor);
         var requestQueryStringAccessor = new FakeRequestQueryStringAccessor();
+        var resourceGraph = new ResourceGraph(new HashSet<ResourceType>());
 
         ResponseModelAdapter = new ResponseModelAdapter(request, options, linkBuilder, metaBuilder, resourceDefinitionAccessor, evaluatedIncludeCache,
-            sparseFieldSetCache, requestQueryStringAccessor);
+            sparseFieldSetCache, requestQueryStringAccessor, resourceGraph);
     }
 
     protected abstract JsonApiRequest CreateJsonApiRequest(IResourceGraph resourceGraph);

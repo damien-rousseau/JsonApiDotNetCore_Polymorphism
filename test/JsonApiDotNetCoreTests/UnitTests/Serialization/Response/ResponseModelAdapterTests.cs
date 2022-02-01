@@ -580,7 +580,7 @@ public sealed class ResponseModelAdapterTests
         evaluatedIncludeCache.Set(include);
 
         return new ResponseModelAdapter(request, options, linkBuilder, metaBuilder, resourceDefinitionAccessor, evaluatedIncludeCache, sparseFieldSetCache,
-            requestQueryStringAccessor);
+            requestQueryStringAccessor, resourceGraph);
     }
 
     private sealed class FakeLinkBuilder : ILinkBuilder
