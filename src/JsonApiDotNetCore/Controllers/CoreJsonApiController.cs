@@ -1,36 +1,37 @@
 using JsonApiDotNetCore.Serialization.Objects;
 using Microsoft.AspNetCore.Mvc;
 
-namespace JsonApiDotNetCore.Controllers;
-
-/// <summary>
-/// Provides helper methods to raise JSON:API compliant errors from controller actions.
-/// </summary>
-public abstract class CoreJsonApiController : ControllerBase
+namespace JsonApiDotNetCore.Controllers
 {
-    protected IActionResult Error(ErrorObject error)
+    /// <summary>
+    /// Provides helper methods to raise JSON:API compliant errors from controller actions.
+    /// </summary>
+    public abstract class CoreJsonApiController : ControllerBase
     {
-        ArgumentGuard.NotNull(error, nameof(error));
-
-        return new ObjectResult(error)
+        protected IActionResult Error(ErrorObject error)
         {
-            StatusCode = (int)error.StatusCode
-        };
-    }
+            ArgumentGuard.NotNull(error, nameof(error));
 
-    protected IActionResult Error(IEnumerable<ErrorObject> errors)
-    {
-        IReadOnlyList<ErrorObject>? errorList = ToErrorList(errors);
-        ArgumentGuard.NotNullNorEmpty(errorList, nameof(errors));
+            return new ObjectResult(error)
+            {
+                StatusCode = (int)error.StatusCode
+            };
+        }
 
-        return new ObjectResult(errorList)
+        protected IActionResult Error(IEnumerable<ErrorObject> errors)
         {
-            StatusCode = (int)ErrorObject.GetResponseStatusCode(errorList)
-        };
-    }
+            IReadOnlyList<ErrorObject>? errorList = ToErrorList(errors);
+            ArgumentGuard.NotNullNorEmpty(errorList, nameof(errors));
 
-    private static IReadOnlyList<ErrorObject>? ToErrorList(IEnumerable<ErrorObject>? errors)
-    {
-        return errors?.ToArray();
+            return new ObjectResult(errorList)
+            {
+                StatusCode = (int)ErrorObject.GetResponseStatusCode(errorList)
+            };
+        }
+
+        private static IReadOnlyList<ErrorObject>? ToErrorList(IEnumerable<ErrorObject>? errors)
+        {
+            return errors?.ToArray();
+        }
     }
 }

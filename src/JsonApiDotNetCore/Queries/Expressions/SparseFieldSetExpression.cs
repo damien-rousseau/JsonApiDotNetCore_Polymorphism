@@ -2,59 +2,60 @@ using System.Collections.Immutable;
 using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Expressions;
-
-/// <summary>
-/// Represents a sparse fieldset, resulting from text such as: firstName,lastName,articles
-/// </summary>
-[PublicAPI]
-public class SparseFieldSetExpression : QueryExpression
+namespace JsonApiDotNetCore.Queries.Expressions
 {
-    public IImmutableSet<ResourceFieldAttribute> Fields { get; }
-
-    public SparseFieldSetExpression(IImmutableSet<ResourceFieldAttribute> fields)
+    /// <summary>
+    /// Represents a sparse fieldset, resulting from text such as: firstName,lastName,articles
+    /// </summary>
+    [PublicAPI]
+    public class SparseFieldSetExpression : QueryExpression
     {
-        ArgumentGuard.NotNullNorEmpty(fields, nameof(fields));
+        public IImmutableSet<ResourceFieldAttribute> Fields { get; }
 
-        Fields = fields;
-    }
-
-    public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
-    {
-        return visitor.VisitSparseFieldSet(this, argument);
-    }
-
-    public override string ToString()
-    {
-        return string.Join(",", Fields.Select(child => child.PublicName).OrderBy(name => name));
-    }
-
-    public override bool Equals(object? obj)
-    {
-        if (ReferenceEquals(this, obj))
+        public SparseFieldSetExpression(IImmutableSet<ResourceFieldAttribute> fields)
         {
-            return true;
+            ArgumentGuard.NotNullNorEmpty(fields, nameof(fields));
+
+            Fields = fields;
         }
 
-        if (obj is null || GetType() != obj.GetType())
+        public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
         {
-            return false;
+            return visitor.VisitSparseFieldSet(this, argument);
         }
 
-        var other = (SparseFieldSetExpression)obj;
-
-        return Fields.SetEquals(other.Fields);
-    }
-
-    public override int GetHashCode()
-    {
-        var hashCode = new HashCode();
-
-        foreach (ResourceFieldAttribute field in Fields)
+        public override string ToString()
         {
-            hashCode.Add(field);
+            return string.Join(",", Fields.Select(child => child.PublicName).OrderBy(name => name));
         }
 
-        return hashCode.ToHashCode();
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            if (obj is null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            var other = (SparseFieldSetExpression)obj;
+
+            return Fields.SetEquals(other.Fields);
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = new HashCode();
+
+            foreach (ResourceFieldAttribute field in Fields)
+            {
+                hashCode.Add(field);
+            }
+
+            return hashCode.ToHashCode();
+        }
     }
 }

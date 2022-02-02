@@ -4,65 +4,66 @@ using System.Text;
 using JsonApiDotNetCore.Errors;
 using JsonApiDotNetCore.Serialization.Objects;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.IdObfuscation;
-
-internal sealed class HexadecimalCodec
+namespace JsonApiDotNetCoreTests.IntegrationTests.IdObfuscation
 {
-    public int Decode(string? value)
+    internal sealed class HexadecimalCodec
     {
-        if (value == null)
+        public int Decode(string? value)
         {
-            return 0;
-        }
-
-        if (!value.StartsWith("x", StringComparison.Ordinal))
-        {
-            throw new JsonApiException(new ErrorObject(HttpStatusCode.BadRequest)
+            if (value == null)
             {
-                Title = "Invalid ID value.",
-                Detail = $"The value '{value}' is not a valid hexadecimal value."
-            });
+                return 0;
+            }
+
+            if (!value.StartsWith("x", StringComparison.Ordinal))
+            {
+                throw new JsonApiException(new ErrorObject(HttpStatusCode.BadRequest)
+                {
+                    Title = "Invalid ID value.",
+                    Detail = $"The value '{value}' is not a valid hexadecimal value."
+                });
+            }
+
+            string stringValue = FromHexString(value[1..]);
+            return int.Parse(stringValue);
         }
 
-        string stringValue = FromHexString(value[1..]);
-        return int.Parse(stringValue);
-    }
-
-    private static string FromHexString(string hexString)
-    {
-        var bytes = new List<byte>(hexString.Length / 2);
-
-        for (int index = 0; index < hexString.Length; index += 2)
+        private static string FromHexString(string hexString)
         {
-            string hexChar = hexString.Substring(index, 2);
-            byte bt = byte.Parse(hexChar, NumberStyles.HexNumber);
-            bytes.Add(bt);
+            var bytes = new List<byte>(hexString.Length / 2);
+
+            for (int index = 0; index < hexString.Length; index += 2)
+            {
+                string hexChar = hexString.Substring(index, 2);
+                byte bt = byte.Parse(hexChar, NumberStyles.HexNumber);
+                bytes.Add(bt);
+            }
+
+            char[] chars = Encoding.ASCII.GetChars(bytes.ToArray());
+            return new string(chars);
         }
 
-        char[] chars = Encoding.ASCII.GetChars(bytes.ToArray());
-        return new string(chars);
-    }
-
-    public string? Encode(int value)
-    {
-        if (value == 0)
+        public string? Encode(int value)
         {
-            return null;
+            if (value == 0)
+            {
+                return null;
+            }
+
+            string stringValue = value.ToString();
+            return $"x{ToHexString(stringValue)}";
         }
 
-        string stringValue = value.ToString();
-        return $"x{ToHexString(stringValue)}";
-    }
-
-    private static string ToHexString(string value)
-    {
-        var builder = new StringBuilder();
-
-        foreach (byte bt in Encoding.ASCII.GetBytes(value))
+        private static string ToHexString(string value)
         {
-            builder.Append(bt.ToString("X2"));
-        }
+            var builder = new StringBuilder();
 
-        return builder.ToString();
+            foreach (byte bt in Encoding.ASCII.GetBytes(value))
+            {
+                builder.Append(bt.ToString("X2"));
+            }
+
+            return builder.ToString();
+        }
     }
 }

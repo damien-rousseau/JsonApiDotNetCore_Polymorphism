@@ -5,7 +5,9 @@ using JsonApiPolymorphismExample.Models;
 using JsonApiPolymorphismExample.Services.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace JsonApiPolymorphismExample.Controllers.V2;
+namespace JsonApiPolymorphismExample.Controllers.V2
+{
+}
 
 // TODO DRO: add support of versioning
 

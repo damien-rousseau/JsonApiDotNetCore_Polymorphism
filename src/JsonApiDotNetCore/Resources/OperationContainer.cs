@@ -2,60 +2,61 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCore.Resources;
-
-/// <summary>
-/// Represents a write operation on a JSON:API resource.
-/// </summary>
-[PublicAPI]
-public sealed class OperationContainer
+namespace JsonApiDotNetCore.Resources
 {
-    private static readonly CollectionConverter CollectionConverter = new();
-
-    public IIdentifiable Resource { get; }
-    public ITargetedFields TargetedFields { get; }
-    public IJsonApiRequest Request { get; }
-
-    public OperationContainer(IIdentifiable resource, ITargetedFields targetedFields, IJsonApiRequest request)
+    /// <summary>
+    /// Represents a write operation on a JSON:API resource.
+    /// </summary>
+    [PublicAPI]
+    public sealed class OperationContainer
     {
-        ArgumentGuard.NotNull(resource, nameof(resource));
-        ArgumentGuard.NotNull(targetedFields, nameof(targetedFields));
-        ArgumentGuard.NotNull(request, nameof(request));
+        private static readonly CollectionConverter CollectionConverter = new();
 
-        Resource = resource;
-        TargetedFields = targetedFields;
-        Request = request;
-    }
+        public IIdentifiable Resource { get; }
+        public ITargetedFields TargetedFields { get; }
+        public IJsonApiRequest Request { get; }
 
-    public void SetTransactionId(string transactionId)
-    {
-        ((JsonApiRequest)Request).TransactionId = transactionId;
-    }
-
-    public OperationContainer WithResource(IIdentifiable resource)
-    {
-        ArgumentGuard.NotNull(resource, nameof(resource));
-
-        return new OperationContainer(resource, TargetedFields, Request);
-    }
-
-    public ISet<IIdentifiable> GetSecondaryResources()
-    {
-        var secondaryResources = new HashSet<IIdentifiable>(IdentifiableComparer.Instance);
-
-        foreach (RelationshipAttribute relationship in TargetedFields.Relationships)
+        public OperationContainer(IIdentifiable resource, ITargetedFields targetedFields, IJsonApiRequest request)
         {
-            AddSecondaryResources(relationship, secondaryResources);
+            ArgumentGuard.NotNull(resource, nameof(resource));
+            ArgumentGuard.NotNull(targetedFields, nameof(targetedFields));
+            ArgumentGuard.NotNull(request, nameof(request));
+
+            Resource = resource;
+            TargetedFields = targetedFields;
+            Request = request;
         }
 
-        return secondaryResources;
-    }
+        public void SetTransactionId(string transactionId)
+        {
+            ((JsonApiRequest)Request).TransactionId = transactionId;
+        }
 
-    private void AddSecondaryResources(RelationshipAttribute relationship, HashSet<IIdentifiable> secondaryResources)
-    {
-        object? rightValue = relationship.GetValue(Resource);
-        ICollection<IIdentifiable> rightResources = CollectionConverter.ExtractResources(rightValue);
+        public OperationContainer WithResource(IIdentifiable resource)
+        {
+            ArgumentGuard.NotNull(resource, nameof(resource));
 
-        secondaryResources.AddRange(rightResources);
+            return new OperationContainer(resource, TargetedFields, Request);
+        }
+
+        public ISet<IIdentifiable> GetSecondaryResources()
+        {
+            var secondaryResources = new HashSet<IIdentifiable>(IdentifiableComparer.Instance);
+
+            foreach (RelationshipAttribute relationship in TargetedFields.Relationships)
+            {
+                AddSecondaryResources(relationship, secondaryResources);
+            }
+
+            return secondaryResources;
+        }
+
+        private void AddSecondaryResources(RelationshipAttribute relationship, HashSet<IIdentifiable> secondaryResources)
+        {
+            object? rightValue = relationship.GetValue(Resource);
+            ICollection<IIdentifiable> rightResources = CollectionConverter.ExtractResources(rightValue);
+
+            secondaryResources.AddRange(rightResources);
+        }
     }
 }

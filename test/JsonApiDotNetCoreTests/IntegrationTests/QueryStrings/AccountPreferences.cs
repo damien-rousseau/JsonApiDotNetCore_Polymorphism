@@ -2,11 +2,12 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.QueryStrings;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public sealed class AccountPreferences : Identifiable<int>
+namespace JsonApiDotNetCoreTests.IntegrationTests.QueryStrings
 {
-    [Attr]
-    public bool UseDarkTheme { get; set; }
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public sealed class AccountPreferences : Identifiable<int>
+    {
+        [Attr]
+        public bool UseDarkTheme { get; set; }
+    }
 }

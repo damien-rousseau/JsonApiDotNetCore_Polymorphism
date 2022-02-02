@@ -4,31 +4,32 @@ using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Resources;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.EagerLoading;
-
-[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-public sealed class BuildingDefinition : JsonApiResourceDefinition<Building, int>
+namespace JsonApiDotNetCoreTests.IntegrationTests.EagerLoading
 {
-    private readonly IJsonApiRequest _request;
-
-    public BuildingDefinition(IResourceGraph resourceGraph, IJsonApiRequest request)
-        : base(resourceGraph)
+    [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+    public sealed class BuildingDefinition : JsonApiResourceDefinition<Building, int>
     {
-        ArgumentGuard.NotNull(request, nameof(request));
+        private readonly IJsonApiRequest _request;
 
-        _request = request;
-    }
-
-    public override void OnDeserialize(Building resource)
-    {
-        if (_request.WriteOperation == WriteOperationKind.CreateResource)
+        public BuildingDefinition(IResourceGraph resourceGraph, IJsonApiRequest request)
+            : base(resourceGraph)
         {
-            // Must ensure that an instance exists for this required relationship,
-            // so that ASP.NET ModelState validation does not produce a validation error.
-            resource.PrimaryDoor = new Door
+            ArgumentGuard.NotNull(request, nameof(request));
+
+            _request = request;
+        }
+
+        public override void OnDeserialize(Building resource)
+        {
+            if (_request.WriteOperation == WriteOperationKind.CreateResource)
             {
-                Color = "(unspecified)"
-            };
+                // Must ensure that an instance exists for this required relationship,
+                // so that ASP.NET ModelState validation does not produce a validation error.
+                resource.PrimaryDoor = new Door
+                {
+                    Color = "(unspecified)"
+                };
+            }
         }
     }
 }

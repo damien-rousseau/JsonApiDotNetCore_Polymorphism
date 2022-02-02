@@ -5,215 +5,216 @@ using Microsoft.EntityFrameworkCore;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.ReadWrite.Deleting;
-
-public sealed class DeleteResourceTests : IClassFixture<IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext>>
+namespace JsonApiDotNetCoreTests.IntegrationTests.ReadWrite.Deleting
 {
-    private readonly IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext> _testContext;
-    private readonly ReadWriteFakers _fakers = new();
-
-    public DeleteResourceTests(IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext> testContext)
+    public sealed class DeleteResourceTests : IClassFixture<IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext>>
     {
-        _testContext = testContext;
+        private readonly IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext> _testContext;
+        private readonly ReadWriteFakers _fakers = new();
 
-        testContext.UseController<WorkItemsController>();
-        testContext.UseController<WorkItemGroupsController>();
-        testContext.UseController<RgbColorsController>();
-    }
-
-    [Fact]
-    public async Task Can_delete_existing_resource()
-    {
-        // Arrange
-        WorkItem existingWorkItem = _fakers.WorkItem.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        public DeleteResourceTests(IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext> testContext)
         {
-            dbContext.WorkItems.Add(existingWorkItem);
-            await dbContext.SaveChangesAsync();
-        });
+            _testContext = testContext;
 
-        string route = $"/workItems/{existingWorkItem.StringId}";
+            testContext.UseController<WorkItemsController>();
+            testContext.UseController<WorkItemGroupsController>();
+            testContext.UseController<RgbColorsController>();
+        }
 
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
-
-        responseDocument.Should().BeEmpty();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_delete_existing_resource()
         {
-            WorkItem? workItemsInDatabase = await dbContext.WorkItems.FirstWithIdOrDefaultAsync(existingWorkItem.Id);
+            // Arrange
+            WorkItem existingWorkItem = _fakers.WorkItem.Generate();
 
-            workItemsInDatabase.Should().BeNull();
-        });
-    }
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.WorkItems.Add(existingWorkItem);
+                await dbContext.SaveChangesAsync();
+            });
 
-    [Fact]
-    public async Task Cannot_delete_unknown_resource()
-    {
-        // Arrange
-        string workItemId = Unknown.StringId.For<WorkItem, int>();
+            string route = $"/workItems/{existingWorkItem.StringId}";
 
-        string route = $"/workItems/{workItemId}";
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            responseDocument.Should().BeEmpty();
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                WorkItem? workItemsInDatabase = await dbContext.WorkItems.FirstWithIdOrDefaultAsync(existingWorkItem.Id);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'workItems' with ID '{workItemId}' does not exist.");
-        error.Source.Should().BeNull();
-        error.Meta.Should().NotContainKey("requestBody");
-    }
+                workItemsInDatabase.Should().BeNull();
+            });
+        }
 
-    [Fact]
-    public async Task Can_delete_resource_with_OneToOne_relationship_from_dependent_side()
-    {
-        // Arrange
-        RgbColor existingColor = _fakers.RgbColor.Generate();
-        existingColor.Group = _fakers.WorkItemGroup.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_delete_unknown_resource()
         {
-            dbContext.RgbColors.Add(existingColor);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            string workItemId = Unknown.StringId.For<WorkItem, int>();
 
-        string route = $"/rgbColors/{existingColor.StringId}";
+            string route = $"/workItems/{workItemId}";
 
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        responseDocument.Should().BeEmpty();
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'workItems' with ID '{workItemId}' does not exist.");
+            error.Source.Should().BeNull();
+            error.Meta.Should().NotContainKey("requestBody");
+        }
+
+        [Fact]
+        public async Task Can_delete_resource_with_OneToOne_relationship_from_dependent_side()
         {
-            RgbColor? colorsInDatabase = await dbContext.RgbColors.FirstWithIdOrDefaultAsync(existingColor.Id);
+            // Arrange
+            RgbColor existingColor = _fakers.RgbColor.Generate();
+            existingColor.Group = _fakers.WorkItemGroup.Generate();
 
-            colorsInDatabase.Should().BeNull();
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.RgbColors.Add(existingColor);
+                await dbContext.SaveChangesAsync();
+            });
 
-            WorkItemGroup groupInDatabase = await dbContext.Groups.FirstWithIdAsync(existingColor.Group.Id);
+            string route = $"/rgbColors/{existingColor.StringId}";
 
-            groupInDatabase.Color.Should().BeNull();
-        });
-    }
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
 
-    [Fact]
-    public async Task Can_delete_existing_resource_with_OneToOne_relationship_from_principal_side()
-    {
-        // Arrange
-        WorkItemGroup existingGroup = _fakers.WorkItemGroup.Generate();
-        existingGroup.Color = _fakers.RgbColor.Generate();
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            responseDocument.Should().BeEmpty();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                RgbColor? colorsInDatabase = await dbContext.RgbColors.FirstWithIdOrDefaultAsync(existingColor.Id);
+
+                colorsInDatabase.Should().BeNull();
+
+                WorkItemGroup groupInDatabase = await dbContext.Groups.FirstWithIdAsync(existingColor.Group.Id);
+
+                groupInDatabase.Color.Should().BeNull();
+            });
+        }
+
+        [Fact]
+        public async Task Can_delete_existing_resource_with_OneToOne_relationship_from_principal_side()
         {
-            dbContext.Groups.Add(existingGroup);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            WorkItemGroup existingGroup = _fakers.WorkItemGroup.Generate();
+            existingGroup.Color = _fakers.RgbColor.Generate();
 
-        string route = $"/workItemGroups/{existingGroup.StringId}";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Groups.Add(existingGroup);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
+            string route = $"/workItemGroups/{existingGroup.StringId}";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
 
-        responseDocument.Should().BeEmpty();
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            responseDocument.Should().BeEmpty();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                WorkItemGroup? groupsInDatabase = await dbContext.Groups.FirstWithIdOrDefaultAsync(existingGroup.Id);
+
+                groupsInDatabase.Should().BeNull();
+
+                RgbColor? colorInDatabase = await dbContext.RgbColors.FirstWithIdOrDefaultAsync(existingGroup.Color.Id);
+
+                colorInDatabase.ShouldNotBeNull();
+                colorInDatabase.Group.Should().BeNull();
+            });
+        }
+
+        [Fact]
+        public async Task Can_delete_existing_resource_with_OneToMany_relationship()
         {
-            WorkItemGroup? groupsInDatabase = await dbContext.Groups.FirstWithIdOrDefaultAsync(existingGroup.Id);
+            // Arrange
+            WorkItem existingWorkItem = _fakers.WorkItem.Generate();
+            existingWorkItem.Subscribers = _fakers.UserAccount.Generate(2).ToHashSet();
 
-            groupsInDatabase.Should().BeNull();
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.WorkItems.Add(existingWorkItem);
+                await dbContext.SaveChangesAsync();
+            });
 
-            RgbColor? colorInDatabase = await dbContext.RgbColors.FirstWithIdOrDefaultAsync(existingGroup.Color.Id);
+            string route = $"/workItems/{existingWorkItem.StringId}";
 
-            colorInDatabase.ShouldNotBeNull();
-            colorInDatabase.Group.Should().BeNull();
-        });
-    }
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
 
-    [Fact]
-    public async Task Can_delete_existing_resource_with_OneToMany_relationship()
-    {
-        // Arrange
-        WorkItem existingWorkItem = _fakers.WorkItem.Generate();
-        existingWorkItem.Subscribers = _fakers.UserAccount.Generate(2).ToHashSet();
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            responseDocument.Should().BeEmpty();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                WorkItem? workItemInDatabase = await dbContext.WorkItems.FirstWithIdOrDefaultAsync(existingWorkItem.Id);
+
+                workItemInDatabase.Should().BeNull();
+
+                List<UserAccount> userAccountsInDatabase = await dbContext.UserAccounts.ToListAsync();
+
+                userAccountsInDatabase.Should().ContainSingle(userAccount => userAccount.Id == existingWorkItem.Subscribers.ElementAt(0).Id);
+                userAccountsInDatabase.Should().ContainSingle(userAccount => userAccount.Id == existingWorkItem.Subscribers.ElementAt(1).Id);
+            });
+        }
+
+        [Fact]
+        public async Task Can_delete_resource_with_ManyToMany_relationship()
         {
-            dbContext.WorkItems.Add(existingWorkItem);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            WorkItem existingWorkItem = _fakers.WorkItem.Generate();
+            existingWorkItem.Tags = _fakers.WorkTag.Generate(1).ToHashSet();
 
-        string route = $"/workItems/{existingWorkItem.StringId}";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.WorkItems.Add(existingWorkItem);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
+            string route = $"/workItems/{existingWorkItem.StringId}";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
 
-        responseDocument.Should().BeEmpty();
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            WorkItem? workItemInDatabase = await dbContext.WorkItems.FirstWithIdOrDefaultAsync(existingWorkItem.Id);
+            responseDocument.Should().BeEmpty();
 
-            workItemInDatabase.Should().BeNull();
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                WorkItem? workItemInDatabase = await dbContext.WorkItems.FirstWithIdOrDefaultAsync(existingWorkItem.Id);
 
-            List<UserAccount> userAccountsInDatabase = await dbContext.UserAccounts.ToListAsync();
+                workItemInDatabase.Should().BeNull();
 
-            userAccountsInDatabase.Should().ContainSingle(userAccount => userAccount.Id == existingWorkItem.Subscribers.ElementAt(0).Id);
-            userAccountsInDatabase.Should().ContainSingle(userAccount => userAccount.Id == existingWorkItem.Subscribers.ElementAt(1).Id);
-        });
-    }
+                WorkTag? tagInDatabase = await dbContext.WorkTags.FirstWithIdOrDefaultAsync(existingWorkItem.Tags.ElementAt(0).Id);
 
-    [Fact]
-    public async Task Can_delete_resource_with_ManyToMany_relationship()
-    {
-        // Arrange
-        WorkItem existingWorkItem = _fakers.WorkItem.Generate();
-        existingWorkItem.Tags = _fakers.WorkTag.Generate(1).ToHashSet();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.WorkItems.Add(existingWorkItem);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/workItems/{existingWorkItem.StringId}";
-
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
-
-        responseDocument.Should().BeEmpty();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            WorkItem? workItemInDatabase = await dbContext.WorkItems.FirstWithIdOrDefaultAsync(existingWorkItem.Id);
-
-            workItemInDatabase.Should().BeNull();
-
-            WorkTag? tagInDatabase = await dbContext.WorkTags.FirstWithIdOrDefaultAsync(existingWorkItem.Tags.ElementAt(0).Id);
-
-            tagInDatabase.ShouldNotBeNull();
-        });
+                tagInDatabase.ShouldNotBeNull();
+            });
+        }
     }
 }

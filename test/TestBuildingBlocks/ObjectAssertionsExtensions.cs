@@ -6,63 +6,64 @@ using FluentAssertions.Numeric;
 using FluentAssertions.Primitives;
 using JetBrains.Annotations;
 
-namespace TestBuildingBlocks;
-
-[PublicAPI]
-public static class ObjectAssertionsExtensions
+namespace TestBuildingBlocks
 {
-    private const decimal NumericPrecision = 0.00000000001M;
-
-    private static readonly JsonWriterOptions JsonWriterOptions = new()
+    [PublicAPI]
+    public static class ObjectAssertionsExtensions
     {
-        Indented = true,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-    };
+        private const decimal NumericPrecision = 0.00000000001M;
 
-    /// <summary>
-    /// Same as <see cref="NumericAssertionsExtensions.BeApproximately(NumericAssertions{decimal}, decimal, decimal, string, object[])" />, but with default
-    /// precision.
-    /// </summary>
-    [CustomAssertion]
-    public static AndConstraint<NumericAssertions<decimal>> BeApproximately(this NumericAssertions<decimal> parent, decimal expectedValue, string because = "",
-        params object[] becauseArgs)
-    {
-        return parent.BeApproximately(expectedValue, NumericPrecision, because, becauseArgs);
-    }
+        private static readonly JsonWriterOptions JsonWriterOptions = new()
+        {
+            Indented = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
 
-    /// <summary>
-    /// Same as <see cref="NumericAssertionsExtensions.BeApproximately(NullableNumericAssertions{decimal}, decimal?, decimal, string, object[])" />, but with
-    /// default precision.
-    /// </summary>
-    [CustomAssertion]
-    public static AndConstraint<NullableNumericAssertions<decimal>> BeApproximately(this NullableNumericAssertions<decimal> parent, decimal? expectedValue,
-        string because = "", params object[] becauseArgs)
-    {
-        return parent.BeApproximately(expectedValue, NumericPrecision, because, becauseArgs);
-    }
+        /// <summary>
+        /// Same as <see cref="NumericAssertionsExtensions.BeApproximately(NumericAssertions{decimal}, decimal, decimal, string, object[])" />, but with default
+        /// precision.
+        /// </summary>
+        [CustomAssertion]
+        public static AndConstraint<NumericAssertions<decimal>> BeApproximately(this NumericAssertions<decimal> parent, decimal expectedValue, string because = "",
+            params object[] becauseArgs)
+        {
+            return parent.BeApproximately(expectedValue, NumericPrecision, because, becauseArgs);
+        }
 
-    /// <summary>
-    /// Asserts that a JSON-formatted string matches the specified expected one, ignoring differences in insignificant whitespace and line endings.
-    /// </summary>
-    [CustomAssertion]
-    public static void BeJson(this StringAssertions source, string expected, string because = "", params object[] becauseArgs)
-    {
-        using JsonDocument sourceJson = JsonDocument.Parse(source.Subject);
-        using JsonDocument expectedJson = JsonDocument.Parse(expected);
+        /// <summary>
+        /// Same as <see cref="NumericAssertionsExtensions.BeApproximately(NullableNumericAssertions{decimal}, decimal?, decimal, string, object[])" />, but with
+        /// default precision.
+        /// </summary>
+        [CustomAssertion]
+        public static AndConstraint<NullableNumericAssertions<decimal>> BeApproximately(this NullableNumericAssertions<decimal> parent, decimal? expectedValue,
+            string because = "", params object[] becauseArgs)
+        {
+            return parent.BeApproximately(expectedValue, NumericPrecision, because, becauseArgs);
+        }
 
-        string sourceText = ToJsonString(sourceJson);
-        string expectedText = ToJsonString(expectedJson);
+        /// <summary>
+        /// Asserts that a JSON-formatted string matches the specified expected one, ignoring differences in insignificant whitespace and line endings.
+        /// </summary>
+        [CustomAssertion]
+        public static void BeJson(this StringAssertions source, string expected, string because = "", params object[] becauseArgs)
+        {
+            using JsonDocument sourceJson = JsonDocument.Parse(source.Subject);
+            using JsonDocument expectedJson = JsonDocument.Parse(expected);
 
-        sourceText.Should().Be(expectedText, because, becauseArgs);
-    }
+            string sourceText = ToJsonString(sourceJson);
+            string expectedText = ToJsonString(expectedJson);
 
-    private static string ToJsonString(JsonDocument document)
-    {
-        using var stream = new MemoryStream();
-        var writer = new Utf8JsonWriter(stream, JsonWriterOptions);
+            sourceText.Should().Be(expectedText, because, becauseArgs);
+        }
 
-        document.WriteTo(writer);
-        writer.Flush();
-        return Encoding.UTF8.GetString(stream.ToArray());
+        private static string ToJsonString(JsonDocument document)
+        {
+            using var stream = new MemoryStream();
+            var writer = new Utf8JsonWriter(stream, JsonWriterOptions);
+
+            document.WriteTo(writer);
+            writer.Flush();
+            return Encoding.UTF8.GetString(stream.ToArray());
+        }
     }
 }

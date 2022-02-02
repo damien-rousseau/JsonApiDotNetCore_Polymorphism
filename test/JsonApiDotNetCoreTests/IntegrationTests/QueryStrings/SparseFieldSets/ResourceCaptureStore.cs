@@ -1,18 +1,19 @@
 using JsonApiDotNetCore.Resources;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.QueryStrings.SparseFieldSets;
-
-public sealed class ResourceCaptureStore
+namespace JsonApiDotNetCoreTests.IntegrationTests.QueryStrings.SparseFieldSets
 {
-    internal List<IIdentifiable> Resources { get; } = new();
-
-    internal void Add(IEnumerable<IIdentifiable> resources)
+    public sealed class ResourceCaptureStore
     {
-        Resources.AddRange(resources);
-    }
+        internal List<IIdentifiable> Resources { get; } = new();
 
-    internal void Clear()
-    {
-        Resources.Clear();
+        internal void Add(IEnumerable<IIdentifiable> resources)
+        {
+            Resources.AddRange(resources);
+        }
+
+        internal void Clear()
+        {
+            Resources.Clear();
+        }
     }
 }

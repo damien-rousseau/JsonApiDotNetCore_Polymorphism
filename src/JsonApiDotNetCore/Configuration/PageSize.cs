@@ -1,49 +1,50 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Configuration;
-
-[PublicAPI]
-public sealed class PageSize : IEquatable<PageSize>
+namespace JsonApiDotNetCore.Configuration
 {
-    public int Value { get; }
-
-    public PageSize(int value)
+    [PublicAPI]
+    public sealed class PageSize : IEquatable<PageSize>
     {
-        if (value < 1)
+        public int Value { get; }
+
+        public PageSize(int value)
         {
-            throw new ArgumentOutOfRangeException(nameof(value));
+            if (value < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value));
+            }
+
+            Value = value;
         }
 
-        Value = value;
-    }
-
-    public bool Equals(PageSize? other)
-    {
-        if (ReferenceEquals(null, other))
+        public bool Equals(PageSize? other)
         {
-            return false;
+            if (ReferenceEquals(null, other))
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            return Value == other.Value;
         }
 
-        if (ReferenceEquals(this, other))
+        public override bool Equals(object? other)
         {
-            return true;
+            return Equals(other as PageSize);
         }
 
-        return Value == other.Value;
-    }
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
 
-    public override bool Equals(object? other)
-    {
-        return Equals(other as PageSize);
-    }
-
-    public override int GetHashCode()
-    {
-        return Value.GetHashCode();
-    }
-
-    public override string ToString()
-    {
-        return Value.ToString();
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
     }
 }

@@ -3,48 +3,49 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.CompositeKeys;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-[Resource(ControllerNamespace = "JsonApiDotNetCoreTests.IntegrationTests.CompositeKeys")]
-public sealed class Car : Identifiable<string?>
+namespace JsonApiDotNetCoreTests.IntegrationTests.CompositeKeys
 {
-    [NotMapped]
-    public override string? Id
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    [Resource(ControllerNamespace = "JsonApiDotNetCoreTests.IntegrationTests.CompositeKeys")]
+    public sealed class Car : Identifiable<string?>
     {
-        get => RegionId == default && LicensePlate == default ? null : $"{RegionId}:{LicensePlate}";
-        set
+        [NotMapped]
+        public override string? Id
         {
-            if (value == null)
+            get => RegionId == default && LicensePlate == default ? null : $"{RegionId}:{LicensePlate}";
+            set
             {
-                RegionId = default;
-                LicensePlate = default;
-                return;
-            }
+                if (value == null)
+                {
+                    RegionId = default;
+                    LicensePlate = default;
+                    return;
+                }
 
-            string[] elements = value.Split(':');
+                string[] elements = value.Split(':');
 
-            if (elements.Length == 2 && long.TryParse(elements[0], out long regionId))
-            {
-                RegionId = regionId;
-                LicensePlate = elements[1];
-            }
-            else
-            {
-                throw new InvalidOperationException($"Failed to convert ID '{value}'.");
+                if (elements.Length == 2 && long.TryParse(elements[0], out long regionId))
+                {
+                    RegionId = regionId;
+                    LicensePlate = elements[1];
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Failed to convert ID '{value}'.");
+                }
             }
         }
+
+        [Attr]
+        public string? LicensePlate { get; set; }
+
+        [Attr]
+        public long RegionId { get; set; }
+
+        [HasOne]
+        public Engine Engine { get; set; } = null!;
+
+        [HasOne]
+        public Dealership? Dealership { get; set; }
     }
-
-    [Attr]
-    public string? LicensePlate { get; set; }
-
-    [Attr]
-    public long RegionId { get; set; }
-
-    [HasOne]
-    public Engine Engine { get; set; } = null!;
-
-    [HasOne]
-    public Dealership? Dealership { get; set; }
 }

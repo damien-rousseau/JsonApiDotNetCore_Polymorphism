@@ -1,37 +1,38 @@
 using System.Reflection;
 using JsonApiDotNetCore.Resources.Internal;
 
-namespace JsonApiDotNetCore.Resources;
-
-internal static class IdentifiableExtensions
+namespace JsonApiDotNetCore.Resources
 {
-    private const string IdPropertyName = nameof(Identifiable<object>.Id);
-
-    public static object GetTypedId(this IIdentifiable identifiable)
+    internal static class IdentifiableExtensions
     {
-        ArgumentGuard.NotNull(identifiable, nameof(identifiable));
+        private const string IdPropertyName = nameof(Identifiable<object>.Id);
 
-        PropertyInfo? property = identifiable.GetType().GetProperty(IdPropertyName);
-
-        if (property == null)
+        public static object GetTypedId(this IIdentifiable identifiable)
         {
-            throw new InvalidOperationException($"Resource of type '{identifiable.GetType()}' does not contain a property named '{IdPropertyName}'.");
-        }
+            ArgumentGuard.NotNull(identifiable, nameof(identifiable));
 
-        object? propertyValue = property.GetValue(identifiable);
+            PropertyInfo? property = identifiable.GetType().GetProperty(IdPropertyName);
 
-        // PERF: We want to throw when 'Id' is unassigned without doing an expensive reflection call, unless this is likely the case.
-        if (identifiable.StringId == null)
-        {
-            object? defaultValue = RuntimeTypeConverter.GetDefaultValue(property.PropertyType);
-
-            if (Equals(propertyValue, defaultValue))
+            if (property == null)
             {
-                throw new InvalidOperationException($"Property '{identifiable.GetType().Name}.{IdPropertyName}' should " +
-                    $"have been assigned at this point, but it contains its default {property.PropertyType.Name} value '{propertyValue}'.");
+                throw new InvalidOperationException($"Resource of type '{identifiable.GetType()}' does not contain a property named '{IdPropertyName}'.");
             }
-        }
 
-        return propertyValue!;
+            object? propertyValue = property.GetValue(identifiable);
+
+            // PERF: We want to throw when 'Id' is unassigned without doing an expensive reflection call, unless this is likely the case.
+            if (identifiable.StringId == null)
+            {
+                object? defaultValue = RuntimeTypeConverter.GetDefaultValue(property.PropertyType);
+
+                if (Equals(propertyValue, defaultValue))
+                {
+                    throw new InvalidOperationException($"Property '{identifiable.GetType().Name}.{IdPropertyName}' should " +
+                        $"have been assigned at this point, but it contains its default {property.PropertyType.Name} value '{propertyValue}'.");
+                }
+            }
+
+            return propertyValue!;
+        }
     }
 }

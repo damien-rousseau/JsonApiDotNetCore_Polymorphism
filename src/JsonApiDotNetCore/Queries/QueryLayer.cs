@@ -4,120 +4,121 @@ using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Queries.Expressions;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCore.Queries;
-
-/// <summary>
-/// A nested data structure that contains <see cref="QueryExpression" /> constraints per resource type.
-/// </summary>
-[PublicAPI]
-public sealed class QueryLayer
+namespace JsonApiDotNetCore.Queries
 {
-    public ResourceType ResourceType { get; }
-
-    public IncludeExpression? Include { get; set; }
-    public FilterExpression? Filter { get; set; }
-    public SortExpression? Sort { get; set; }
-    public PaginationExpression? Pagination { get; set; }
-    public IDictionary<ResourceFieldAttribute, QueryLayer?>? Projection { get; set; }
-
-    public QueryLayer(ResourceType resourceType)
+    /// <summary>
+    /// A nested data structure that contains <see cref="QueryExpression" /> constraints per resource type.
+    /// </summary>
+    [PublicAPI]
+    public sealed class QueryLayer
     {
-        ArgumentGuard.NotNull(resourceType, nameof(resourceType));
+        public ResourceType ResourceType { get; }
 
-        ResourceType = resourceType;
-    }
+        public IncludeExpression? Include { get; set; }
+        public FilterExpression? Filter { get; set; }
+        public SortExpression? Sort { get; set; }
+        public PaginationExpression? Pagination { get; set; }
+        public IDictionary<ResourceFieldAttribute, QueryLayer?>? Projection { get; set; }
 
-    public override string ToString()
-    {
-        var builder = new StringBuilder();
-
-        var writer = new IndentingStringWriter(builder);
-        WriteLayer(writer, this);
-
-        return builder.ToString();
-    }
-
-    private static void WriteLayer(IndentingStringWriter writer, QueryLayer layer, string? prefix = null)
-    {
-        writer.WriteLine($"{prefix}{nameof(QueryLayer)}<{layer.ResourceType.ClrType.Name}>");
-
-        using (writer.Indent())
+        public QueryLayer(ResourceType resourceType)
         {
-            if (layer.Include != null)
-            {
-                writer.WriteLine($"{nameof(Include)}: {layer.Include}");
-            }
+            ArgumentGuard.NotNull(resourceType, nameof(resourceType));
 
-            if (layer.Filter != null)
-            {
-                writer.WriteLine($"{nameof(Filter)}: {layer.Filter}");
-            }
+            ResourceType = resourceType;
+        }
 
-            if (layer.Sort != null)
-            {
-                writer.WriteLine($"{nameof(Sort)}: {layer.Sort}");
-            }
+        public override string ToString()
+        {
+            var builder = new StringBuilder();
 
-            if (layer.Pagination != null)
-            {
-                writer.WriteLine($"{nameof(Pagination)}: {layer.Pagination}");
-            }
+            var writer = new IndentingStringWriter(builder);
+            WriteLayer(writer, this);
 
-            if (!layer.Projection.IsNullOrEmpty())
-            {
-                writer.WriteLine(nameof(Projection));
+            return builder.ToString();
+        }
 
-                using (writer.Indent())
+        private static void WriteLayer(IndentingStringWriter writer, QueryLayer layer, string? prefix = null)
+        {
+            writer.WriteLine($"{prefix}{nameof(QueryLayer)}<{layer.ResourceType.ClrType.Name}>");
+
+            using (writer.Indent())
+            {
+                if (layer.Include != null)
                 {
-                    foreach ((ResourceFieldAttribute field, QueryLayer? nextLayer) in layer.Projection)
+                    writer.WriteLine($"{nameof(Include)}: {layer.Include}");
+                }
+
+                if (layer.Filter != null)
+                {
+                    writer.WriteLine($"{nameof(Filter)}: {layer.Filter}");
+                }
+
+                if (layer.Sort != null)
+                {
+                    writer.WriteLine($"{nameof(Sort)}: {layer.Sort}");
+                }
+
+                if (layer.Pagination != null)
+                {
+                    writer.WriteLine($"{nameof(Pagination)}: {layer.Pagination}");
+                }
+
+                if (!layer.Projection.IsNullOrEmpty())
+                {
+                    writer.WriteLine(nameof(Projection));
+
+                    using (writer.Indent())
                     {
-                        if (nextLayer == null)
+                        foreach ((ResourceFieldAttribute field, QueryLayer? nextLayer) in layer.Projection)
                         {
-                            writer.WriteLine(field.ToString());
-                        }
-                        else
-                        {
-                            WriteLayer(writer, nextLayer, $"{field.PublicName}: ");
+                            if (nextLayer == null)
+                            {
+                                writer.WriteLine(field.ToString());
+                            }
+                            else
+                            {
+                                WriteLayer(writer, nextLayer, $"{field.PublicName}: ");
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
-    private sealed class IndentingStringWriter : IDisposable
-    {
-        private readonly StringBuilder _builder;
-        private int _indentDepth;
-
-        public IndentingStringWriter(StringBuilder builder)
+        private sealed class IndentingStringWriter : IDisposable
         {
-            _builder = builder;
-        }
+            private readonly StringBuilder _builder;
+            private int _indentDepth;
 
-        public void WriteLine(string? line)
-        {
-            if (_indentDepth > 0)
+            public IndentingStringWriter(StringBuilder builder)
             {
-                _builder.Append(new string(' ', _indentDepth * 2));
+                _builder = builder;
             }
 
-            _builder.AppendLine(line);
-        }
-
-        public IndentingStringWriter Indent()
-        {
-            WriteLine("{");
-            _indentDepth++;
-            return this;
-        }
-
-        public void Dispose()
-        {
-            if (_indentDepth > 0)
+            public void WriteLine(string? line)
             {
-                _indentDepth--;
-                WriteLine("}");
+                if (_indentDepth > 0)
+                {
+                    _builder.Append(new string(' ', _indentDepth * 2));
+                }
+
+                _builder.AppendLine(line);
+            }
+
+            public IndentingStringWriter Indent()
+            {
+                WriteLine("{");
+                _indentDepth++;
+                return this;
+            }
+
+            public void Dispose()
+            {
+                if (_indentDepth > 0)
+                {
+                    _indentDepth--;
+                    WriteLine("}");
+                }
             }
         }
     }

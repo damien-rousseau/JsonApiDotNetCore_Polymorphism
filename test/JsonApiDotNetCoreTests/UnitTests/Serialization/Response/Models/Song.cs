@@ -2,11 +2,12 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCoreTests.UnitTests.Serialization.Response.Models;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public sealed class Song : Identifiable<int>
+namespace JsonApiDotNetCoreTests.UnitTests.Serialization.Response.Models
 {
-    [Attr]
-    public string Title { get; set; } = null!;
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public sealed class Song : Identifiable<int>
+    {
+        [Attr]
+        public string Title { get; set; } = null!;
+    }
 }

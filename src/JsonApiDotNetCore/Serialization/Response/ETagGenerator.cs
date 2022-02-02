@@ -1,25 +1,26 @@
 using Microsoft.Net.Http.Headers;
 
-namespace JsonApiDotNetCore.Serialization.Response;
-
-/// <inheritdoc />
-internal sealed class ETagGenerator : IETagGenerator
+namespace JsonApiDotNetCore.Serialization.Response
 {
-    private readonly IFingerprintGenerator _fingerprintGenerator;
-
-    public ETagGenerator(IFingerprintGenerator fingerprintGenerator)
-    {
-        ArgumentGuard.NotNull(fingerprintGenerator, nameof(fingerprintGenerator));
-
-        _fingerprintGenerator = fingerprintGenerator;
-    }
-
     /// <inheritdoc />
-    public EntityTagHeaderValue Generate(string requestUrl, string responseBody)
+    internal sealed class ETagGenerator : IETagGenerator
     {
-        string fingerprint = _fingerprintGenerator.Generate(ArrayFactory.Create(requestUrl, responseBody));
-        string eTagValue = $"\"{fingerprint}\"";
+        private readonly IFingerprintGenerator _fingerprintGenerator;
 
-        return EntityTagHeaderValue.Parse(eTagValue);
+        public ETagGenerator(IFingerprintGenerator fingerprintGenerator)
+        {
+            ArgumentGuard.NotNull(fingerprintGenerator, nameof(fingerprintGenerator));
+
+            _fingerprintGenerator = fingerprintGenerator;
+        }
+
+        /// <inheritdoc />
+        public EntityTagHeaderValue Generate(string requestUrl, string responseBody)
+        {
+            string fingerprint = _fingerprintGenerator.Generate(ArrayFactory.Create(requestUrl, responseBody));
+            string eTagValue = $"\"{fingerprint}\"";
+
+            return EntityTagHeaderValue.Parse(eTagValue);
+        }
     }
 }

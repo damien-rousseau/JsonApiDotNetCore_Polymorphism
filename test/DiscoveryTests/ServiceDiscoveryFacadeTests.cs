@@ -14,122 +14,123 @@ using Moq;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace DiscoveryTests;
-
-public sealed class ServiceDiscoveryFacadeTests
+namespace DiscoveryTests
 {
-    private static readonly ILoggerFactory LoggerFactory = NullLoggerFactory.Instance;
-    private readonly IServiceCollection _services = new ServiceCollection();
-    private readonly ResourceGraphBuilder _resourceGraphBuilder;
-
-    public ServiceDiscoveryFacadeTests()
+    public sealed class ServiceDiscoveryFacadeTests
     {
-        var dbResolverMock = new Mock<IDbContextResolver>();
-        dbResolverMock.Setup(resolver => resolver.GetContext()).Returns(new Mock<DbContext>().Object);
-        _services.AddScoped(_ => dbResolverMock.Object);
+        private static readonly ILoggerFactory LoggerFactory = NullLoggerFactory.Instance;
+        private readonly IServiceCollection _services = new ServiceCollection();
+        private readonly ResourceGraphBuilder _resourceGraphBuilder;
 
-        IJsonApiOptions options = new JsonApiOptions();
+        public ServiceDiscoveryFacadeTests()
+        {
+            var dbResolverMock = new Mock<IDbContextResolver>();
+            dbResolverMock.Setup(resolver => resolver.GetContext()).Returns(new Mock<DbContext>().Object);
+            _services.AddScoped(_ => dbResolverMock.Object);
 
-        _services.AddSingleton(options);
-        _services.AddSingleton(LoggerFactory);
-        _services.AddScoped(_ => new Mock<IJsonApiRequest>().Object);
-        _services.AddScoped(_ => new Mock<ITargetedFields>().Object);
-        _services.AddScoped(_ => new Mock<IResourceGraph>().Object);
-        _services.AddScoped(typeof(IResourceChangeTracker<>), typeof(ResourceChangeTracker<>));
-        _services.AddScoped(_ => new Mock<IResourceFactory>().Object);
-        _services.AddScoped(_ => new Mock<IPaginationContext>().Object);
-        _services.AddScoped(_ => new Mock<IQueryLayerComposer>().Object);
-        _services.AddScoped(_ => new Mock<IResourceRepositoryAccessor>().Object);
-        _services.AddScoped(_ => new Mock<IResourceDefinitionAccessor>().Object);
+            IJsonApiOptions options = new JsonApiOptions();
 
-        _resourceGraphBuilder = new ResourceGraphBuilder(options, LoggerFactory);
-    }
+            _services.AddSingleton(options);
+            _services.AddSingleton(LoggerFactory);
+            _services.AddScoped(_ => new Mock<IJsonApiRequest>().Object);
+            _services.AddScoped(_ => new Mock<ITargetedFields>().Object);
+            _services.AddScoped(_ => new Mock<IResourceGraph>().Object);
+            _services.AddScoped(typeof(IResourceChangeTracker<>), typeof(ResourceChangeTracker<>));
+            _services.AddScoped(_ => new Mock<IResourceFactory>().Object);
+            _services.AddScoped(_ => new Mock<IPaginationContext>().Object);
+            _services.AddScoped(_ => new Mock<IQueryLayerComposer>().Object);
+            _services.AddScoped(_ => new Mock<IResourceRepositoryAccessor>().Object);
+            _services.AddScoped(_ => new Mock<IResourceDefinitionAccessor>().Object);
 
-    [Fact]
-    public void Can_add_resources_from_assembly_to_graph()
-    {
-        // Arrange
-        var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
-        facade.AddAssembly(typeof(Person).Assembly);
+            _resourceGraphBuilder = new ResourceGraphBuilder(options, LoggerFactory);
+        }
 
-        // Act
-        facade.DiscoverResources();
+        [Fact]
+        public void Can_add_resources_from_assembly_to_graph()
+        {
+            // Arrange
+            var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
+            facade.AddAssembly(typeof(Person).Assembly);
 
-        // Assert
-        IResourceGraph resourceGraph = _resourceGraphBuilder.Build();
+            // Act
+            facade.DiscoverResources();
 
-        ResourceType? personType = resourceGraph.FindResourceType(typeof(Person));
-        personType.ShouldNotBeNull();
+            // Assert
+            IResourceGraph resourceGraph = _resourceGraphBuilder.Build();
 
-        ResourceType? todoItemType = resourceGraph.FindResourceType(typeof(TodoItem));
-        todoItemType.ShouldNotBeNull();
-    }
+            ResourceType? personType = resourceGraph.FindResourceType(typeof(Person));
+            personType.ShouldNotBeNull();
 
-    [Fact]
-    public void Can_add_resource_from_current_assembly_to_graph()
-    {
-        // Arrange
-        var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
-        facade.AddCurrentAssembly();
+            ResourceType? todoItemType = resourceGraph.FindResourceType(typeof(TodoItem));
+            todoItemType.ShouldNotBeNull();
+        }
 
-        // Act
-        facade.DiscoverResources();
+        [Fact]
+        public void Can_add_resource_from_current_assembly_to_graph()
+        {
+            // Arrange
+            var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
+            facade.AddCurrentAssembly();
 
-        // Assert
-        IResourceGraph resourceGraph = _resourceGraphBuilder.Build();
+            // Act
+            facade.DiscoverResources();
 
-        ResourceType? testResourceType = resourceGraph.FindResourceType(typeof(PrivateResource));
-        testResourceType.ShouldNotBeNull();
-    }
+            // Assert
+            IResourceGraph resourceGraph = _resourceGraphBuilder.Build();
 
-    [Fact]
-    public void Can_add_resource_service_from_current_assembly_to_container()
-    {
-        // Arrange
-        var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
-        facade.AddCurrentAssembly();
+            ResourceType? testResourceType = resourceGraph.FindResourceType(typeof(PrivateResource));
+            testResourceType.ShouldNotBeNull();
+        }
 
-        // Act
-        facade.DiscoverInjectables();
+        [Fact]
+        public void Can_add_resource_service_from_current_assembly_to_container()
+        {
+            // Arrange
+            var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
+            facade.AddCurrentAssembly();
 
-        // Assert
-        ServiceProvider services = _services.BuildServiceProvider();
+            // Act
+            facade.DiscoverInjectables();
 
-        var resourceService = services.GetRequiredService<IResourceService<PrivateResource, int>>();
-        resourceService.Should().BeOfType<PrivateResourceService>();
-    }
+            // Assert
+            ServiceProvider services = _services.BuildServiceProvider();
 
-    [Fact]
-    public void Can_add_resource_repository_from_current_assembly_to_container()
-    {
-        // Arrange
-        var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
-        facade.AddCurrentAssembly();
+            var resourceService = services.GetRequiredService<IResourceService<PrivateResource, int>>();
+            resourceService.Should().BeOfType<PrivateResourceService>();
+        }
 
-        // Act
-        facade.DiscoverInjectables();
+        [Fact]
+        public void Can_add_resource_repository_from_current_assembly_to_container()
+        {
+            // Arrange
+            var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
+            facade.AddCurrentAssembly();
 
-        // Assert
-        ServiceProvider services = _services.BuildServiceProvider();
+            // Act
+            facade.DiscoverInjectables();
 
-        var resourceRepository = services.GetRequiredService<IResourceRepository<PrivateResource, int>>();
-        resourceRepository.Should().BeOfType<PrivateResourceRepository>();
-    }
+            // Assert
+            ServiceProvider services = _services.BuildServiceProvider();
 
-    [Fact]
-    public void Can_add_resource_definition_from_current_assembly_to_container()
-    {
-        // Arrange
-        var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
-        facade.AddCurrentAssembly();
+            var resourceRepository = services.GetRequiredService<IResourceRepository<PrivateResource, int>>();
+            resourceRepository.Should().BeOfType<PrivateResourceRepository>();
+        }
 
-        // Act
-        facade.DiscoverInjectables();
+        [Fact]
+        public void Can_add_resource_definition_from_current_assembly_to_container()
+        {
+            // Arrange
+            var facade = new ServiceDiscoveryFacade(_services, _resourceGraphBuilder, LoggerFactory);
+            facade.AddCurrentAssembly();
 
-        // Assert
-        ServiceProvider services = _services.BuildServiceProvider();
+            // Act
+            facade.DiscoverInjectables();
 
-        var resourceDefinition = services.GetRequiredService<IResourceDefinition<PrivateResource, int>>();
-        resourceDefinition.Should().BeOfType<PrivateResourceDefinition>();
+            // Assert
+            ServiceProvider services = _services.BuildServiceProvider();
+
+            var resourceDefinition = services.GetRequiredService<IResourceDefinition<PrivateResource, int>>();
+            resourceDefinition.Should().BeOfType<PrivateResourceDefinition>();
+        }
     }
 }

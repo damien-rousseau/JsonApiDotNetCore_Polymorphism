@@ -1,23 +1,24 @@
 using JsonApiDotNetCore.Queries.Expressions;
 
-namespace JsonApiDotNetCore.Queries.Internal;
-
-/// <inheritdoc />
-internal sealed class EvaluatedIncludeCache : IEvaluatedIncludeCache
+namespace JsonApiDotNetCore.Queries.Internal
 {
-    private IncludeExpression? _include;
-
     /// <inheritdoc />
-    public void Set(IncludeExpression include)
+    internal sealed class EvaluatedIncludeCache : IEvaluatedIncludeCache
     {
-        ArgumentGuard.NotNull(include, nameof(include));
+        private IncludeExpression? _include;
 
-        _include = include;
-    }
+        /// <inheritdoc />
+        public void Set(IncludeExpression include)
+        {
+            ArgumentGuard.NotNull(include, nameof(include));
 
-    /// <inheritdoc />
-    public IncludeExpression? Get()
-    {
-        return _include;
+            _include = include;
+        }
+
+        /// <inheritdoc />
+        public IncludeExpression? Get()
+        {
+            return _include;
+        }
     }
 }

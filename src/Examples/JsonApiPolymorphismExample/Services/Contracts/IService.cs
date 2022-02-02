@@ -1,6 +1,7 @@
-namespace JsonApiPolymorphismExample.Services.Contracts;
-
-public interface IService<T>
+namespace JsonApiPolymorphismExample.Services.Contracts
 {
-    Task<IReadOnlyCollection<T>> GetAsync(CancellationToken cancellationToken);
+    public interface IService<T>
+    {
+        Task<IReadOnlyCollection<T>> GetAsync(CancellationToken cancellationToken);
+    }
 }

@@ -6,188 +6,189 @@ using JsonApiDotNetCore.Queries.Expressions;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests;
-
-/// <summary>
-/// Tracks invocations on <see cref="IResourceDefinition{TResource,TId}" /> callback methods. This is used solely in our tests, so we can assert which
-/// calls were made, and in which order.
-/// </summary>
-public abstract class HitCountingResourceDefinition<TResource, TId> : JsonApiResourceDefinition<TResource, TId>
-    where TResource : class, IIdentifiable<TId>
+namespace JsonApiDotNetCoreTests.IntegrationTests
 {
-    private readonly ResourceDefinitionHitCounter _hitCounter;
-
-    protected virtual ResourceDefinitionExtensibilityPoints ExtensibilityPointsToTrack => ResourceDefinitionExtensibilityPoints.All;
-
-    protected HitCountingResourceDefinition(IResourceGraph resourceGraph, ResourceDefinitionHitCounter hitCounter)
-        : base(resourceGraph)
+    /// <summary>
+    /// Tracks invocations on <see cref="IResourceDefinition{TResource,TId}" /> callback methods. This is used solely in our tests, so we can assert which
+    /// calls were made, and in which order.
+    /// </summary>
+    public abstract class HitCountingResourceDefinition<TResource, TId> : JsonApiResourceDefinition<TResource, TId>
+        where TResource : class, IIdentifiable<TId>
     {
-        ArgumentGuard.NotNull(hitCounter, nameof(hitCounter));
+        private readonly ResourceDefinitionHitCounter _hitCounter;
 
-        _hitCounter = hitCounter;
-    }
+        protected virtual ResourceDefinitionExtensibilityPoints ExtensibilityPointsToTrack => ResourceDefinitionExtensibilityPoints.All;
 
-    public override IImmutableSet<IncludeElementExpression> OnApplyIncludes(IImmutableSet<IncludeElementExpression> existingIncludes)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplyIncludes))
+        protected HitCountingResourceDefinition(IResourceGraph resourceGraph, ResourceDefinitionHitCounter hitCounter)
+            : base(resourceGraph)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplyIncludes);
+            ArgumentGuard.NotNull(hitCounter, nameof(hitCounter));
+
+            _hitCounter = hitCounter;
         }
 
-        return base.OnApplyIncludes(existingIncludes);
-    }
-
-    public override FilterExpression? OnApplyFilter(FilterExpression? existingFilter)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplyFilter))
+        public override IImmutableSet<IncludeElementExpression> OnApplyIncludes(IImmutableSet<IncludeElementExpression> existingIncludes)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplyFilter);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplyIncludes))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplyIncludes);
+            }
+
+            return base.OnApplyIncludes(existingIncludes);
         }
 
-        return base.OnApplyFilter(existingFilter);
-    }
-
-    public override SortExpression? OnApplySort(SortExpression? existingSort)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplySort))
+        public override FilterExpression? OnApplyFilter(FilterExpression? existingFilter)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplySort);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplyFilter))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplyFilter);
+            }
+
+            return base.OnApplyFilter(existingFilter);
         }
 
-        return base.OnApplySort(existingSort);
-    }
-
-    public override PaginationExpression? OnApplyPagination(PaginationExpression? existingPagination)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplyPagination))
+        public override SortExpression? OnApplySort(SortExpression? existingSort)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplyPagination);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplySort))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplySort);
+            }
+
+            return base.OnApplySort(existingSort);
         }
 
-        return base.OnApplyPagination(existingPagination);
-    }
-
-    public override SparseFieldSetExpression? OnApplySparseFieldSet(SparseFieldSetExpression? existingSparseFieldSet)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplySparseFieldSet))
+        public override PaginationExpression? OnApplyPagination(PaginationExpression? existingPagination)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplySparseFieldSet);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplyPagination))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplyPagination);
+            }
+
+            return base.OnApplyPagination(existingPagination);
         }
 
-        return base.OnApplySparseFieldSet(existingSparseFieldSet);
-    }
-
-    public override QueryStringParameterHandlers<TResource>? OnRegisterQueryableHandlersForQueryStringParameters()
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnRegisterQueryableHandlersForQueryStringParameters))
+        public override SparseFieldSetExpression? OnApplySparseFieldSet(SparseFieldSetExpression? existingSparseFieldSet)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnRegisterQueryableHandlersForQueryStringParameters);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnApplySparseFieldSet))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnApplySparseFieldSet);
+            }
+
+            return base.OnApplySparseFieldSet(existingSparseFieldSet);
         }
 
-        return base.OnRegisterQueryableHandlersForQueryStringParameters();
-    }
-
-    public override IDictionary<string, object?>? GetMeta(TResource resource)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.GetMeta))
+        public override QueryStringParameterHandlers<TResource>? OnRegisterQueryableHandlersForQueryStringParameters()
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.GetMeta);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnRegisterQueryableHandlersForQueryStringParameters))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnRegisterQueryableHandlersForQueryStringParameters);
+            }
+
+            return base.OnRegisterQueryableHandlersForQueryStringParameters();
         }
 
-        return base.GetMeta(resource);
-    }
-
-    public override Task OnPrepareWriteAsync(TResource resource, WriteOperationKind writeOperation, CancellationToken cancellationToken)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnPrepareWriteAsync))
+        public override IDictionary<string, object?>? GetMeta(TResource resource)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnPrepareWriteAsync);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.GetMeta))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.GetMeta);
+            }
+
+            return base.GetMeta(resource);
         }
 
-        return base.OnPrepareWriteAsync(resource, writeOperation, cancellationToken);
-    }
-
-    public override Task<IIdentifiable?> OnSetToOneRelationshipAsync(TResource leftResource, HasOneAttribute hasOneRelationship, IIdentifiable? rightResourceId,
-        WriteOperationKind writeOperation, CancellationToken cancellationToken)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnSetToOneRelationshipAsync))
+        public override Task OnPrepareWriteAsync(TResource resource, WriteOperationKind writeOperation, CancellationToken cancellationToken)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnSetToOneRelationshipAsync);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnPrepareWriteAsync))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnPrepareWriteAsync);
+            }
+
+            return base.OnPrepareWriteAsync(resource, writeOperation, cancellationToken);
         }
 
-        return base.OnSetToOneRelationshipAsync(leftResource, hasOneRelationship, rightResourceId, writeOperation, cancellationToken);
-    }
-
-    public override Task OnSetToManyRelationshipAsync(TResource leftResource, HasManyAttribute hasManyRelationship, ISet<IIdentifiable> rightResourceIds,
-        WriteOperationKind writeOperation, CancellationToken cancellationToken)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnSetToManyRelationshipAsync))
+        public override Task<IIdentifiable?> OnSetToOneRelationshipAsync(TResource leftResource, HasOneAttribute hasOneRelationship, IIdentifiable? rightResourceId,
+            WriteOperationKind writeOperation, CancellationToken cancellationToken)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnSetToManyRelationshipAsync);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnSetToOneRelationshipAsync))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnSetToOneRelationshipAsync);
+            }
+
+            return base.OnSetToOneRelationshipAsync(leftResource, hasOneRelationship, rightResourceId, writeOperation, cancellationToken);
         }
 
-        return base.OnSetToManyRelationshipAsync(leftResource, hasManyRelationship, rightResourceIds, writeOperation, cancellationToken);
-    }
-
-    public override Task OnAddToRelationshipAsync(TId leftResourceId, HasManyAttribute hasManyRelationship, ISet<IIdentifiable> rightResourceIds,
-        CancellationToken cancellationToken)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnAddToRelationshipAsync))
+        public override Task OnSetToManyRelationshipAsync(TResource leftResource, HasManyAttribute hasManyRelationship, ISet<IIdentifiable> rightResourceIds,
+            WriteOperationKind writeOperation, CancellationToken cancellationToken)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnAddToRelationshipAsync);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnSetToManyRelationshipAsync))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnSetToManyRelationshipAsync);
+            }
+
+            return base.OnSetToManyRelationshipAsync(leftResource, hasManyRelationship, rightResourceIds, writeOperation, cancellationToken);
         }
 
-        return base.OnAddToRelationshipAsync(leftResourceId, hasManyRelationship, rightResourceIds, cancellationToken);
-    }
-
-    public override Task OnRemoveFromRelationshipAsync(TResource leftResource, HasManyAttribute hasManyRelationship, ISet<IIdentifiable> rightResourceIds,
-        CancellationToken cancellationToken)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnRemoveFromRelationshipAsync))
+        public override Task OnAddToRelationshipAsync(TId leftResourceId, HasManyAttribute hasManyRelationship, ISet<IIdentifiable> rightResourceIds,
+            CancellationToken cancellationToken)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnRemoveFromRelationshipAsync);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnAddToRelationshipAsync))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnAddToRelationshipAsync);
+            }
+
+            return base.OnAddToRelationshipAsync(leftResourceId, hasManyRelationship, rightResourceIds, cancellationToken);
         }
 
-        return base.OnRemoveFromRelationshipAsync(leftResource, hasManyRelationship, rightResourceIds, cancellationToken);
-    }
-
-    public override Task OnWritingAsync(TResource resource, WriteOperationKind writeOperation, CancellationToken cancellationToken)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnWritingAsync))
+        public override Task OnRemoveFromRelationshipAsync(TResource leftResource, HasManyAttribute hasManyRelationship, ISet<IIdentifiable> rightResourceIds,
+            CancellationToken cancellationToken)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnWritingAsync);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnRemoveFromRelationshipAsync))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnRemoveFromRelationshipAsync);
+            }
+
+            return base.OnRemoveFromRelationshipAsync(leftResource, hasManyRelationship, rightResourceIds, cancellationToken);
         }
 
-        return base.OnWritingAsync(resource, writeOperation, cancellationToken);
-    }
-
-    public override Task OnWriteSucceededAsync(TResource resource, WriteOperationKind writeOperation, CancellationToken cancellationToken)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnWriteSucceededAsync))
+        public override Task OnWritingAsync(TResource resource, WriteOperationKind writeOperation, CancellationToken cancellationToken)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnWriteSucceededAsync);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnWritingAsync))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnWritingAsync);
+            }
+
+            return base.OnWritingAsync(resource, writeOperation, cancellationToken);
         }
 
-        return base.OnWriteSucceededAsync(resource, writeOperation, cancellationToken);
-    }
-
-    public override void OnDeserialize(TResource resource)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnDeserialize))
+        public override Task OnWriteSucceededAsync(TResource resource, WriteOperationKind writeOperation, CancellationToken cancellationToken)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnDeserialize);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnWriteSucceededAsync))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnWriteSucceededAsync);
+            }
+
+            return base.OnWriteSucceededAsync(resource, writeOperation, cancellationToken);
         }
 
-        base.OnDeserialize(resource);
-    }
-
-    public override void OnSerialize(TResource resource)
-    {
-        if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnSerialize))
+        public override void OnDeserialize(TResource resource)
         {
-            _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnSerialize);
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnDeserialize))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnDeserialize);
+            }
+
+            base.OnDeserialize(resource);
         }
 
-        base.OnSerialize(resource);
+        public override void OnSerialize(TResource resource)
+        {
+            if (ExtensibilityPointsToTrack.HasFlag(ResourceDefinitionExtensibilityPoints.OnSerialize))
+            {
+                _hitCounter.TrackInvocation<TResource>(ResourceDefinitionExtensibilityPoints.OnSerialize);
+            }
+
+            base.OnSerialize(resource);
+        }
     }
 }

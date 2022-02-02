@@ -6,112 +6,113 @@ using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 using Microsoft.EntityFrameworkCore.Metadata;
 
-namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding;
-
-/// <summary>
-/// Drives conversion from <see cref="QueryLayer" /> into system <see cref="Expression" /> trees.
-/// </summary>
-[PublicAPI]
-public class QueryableBuilder
+namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding
 {
-    private readonly Expression _source;
-    private readonly Type _elementType;
-    private readonly Type _extensionType;
-    private readonly LambdaParameterNameFactory _nameFactory;
-    private readonly IResourceFactory _resourceFactory;
-    private readonly IModel _entityModel;
-    private readonly LambdaScopeFactory _lambdaScopeFactory;
-
-    public QueryableBuilder(Expression source, Type elementType, Type extensionType, LambdaParameterNameFactory nameFactory, IResourceFactory resourceFactory,
-        IModel entityModel, LambdaScopeFactory? lambdaScopeFactory = null)
+    /// <summary>
+    /// Drives conversion from <see cref="QueryLayer" /> into system <see cref="Expression" /> trees.
+    /// </summary>
+    [PublicAPI]
+    public class QueryableBuilder
     {
-        ArgumentGuard.NotNull(source, nameof(source));
-        ArgumentGuard.NotNull(elementType, nameof(elementType));
-        ArgumentGuard.NotNull(extensionType, nameof(extensionType));
-        ArgumentGuard.NotNull(nameFactory, nameof(nameFactory));
-        ArgumentGuard.NotNull(resourceFactory, nameof(resourceFactory));
-        ArgumentGuard.NotNull(entityModel, nameof(entityModel));
+        private readonly Expression _source;
+        private readonly Type _elementType;
+        private readonly Type _extensionType;
+        private readonly LambdaParameterNameFactory _nameFactory;
+        private readonly IResourceFactory _resourceFactory;
+        private readonly IModel _entityModel;
+        private readonly LambdaScopeFactory _lambdaScopeFactory;
 
-        _source = source;
-        _elementType = elementType;
-        _extensionType = extensionType;
-        _nameFactory = nameFactory;
-        _resourceFactory = resourceFactory;
-        _entityModel = entityModel;
-        _lambdaScopeFactory = lambdaScopeFactory ?? new LambdaScopeFactory(_nameFactory);
-    }
-
-    public virtual Expression ApplyQuery(QueryLayer layer)
-    {
-        ArgumentGuard.NotNull(layer, nameof(layer));
-
-        Expression expression = _source;
-
-        if (layer.Include != null)
+        public QueryableBuilder(Expression source, Type elementType, Type extensionType, LambdaParameterNameFactory nameFactory, IResourceFactory resourceFactory,
+            IModel entityModel, LambdaScopeFactory? lambdaScopeFactory = null)
         {
-            expression = ApplyInclude(expression, layer.Include, layer.ResourceType);
+            ArgumentGuard.NotNull(source, nameof(source));
+            ArgumentGuard.NotNull(elementType, nameof(elementType));
+            ArgumentGuard.NotNull(extensionType, nameof(extensionType));
+            ArgumentGuard.NotNull(nameFactory, nameof(nameFactory));
+            ArgumentGuard.NotNull(resourceFactory, nameof(resourceFactory));
+            ArgumentGuard.NotNull(entityModel, nameof(entityModel));
+
+            _source = source;
+            _elementType = elementType;
+            _extensionType = extensionType;
+            _nameFactory = nameFactory;
+            _resourceFactory = resourceFactory;
+            _entityModel = entityModel;
+            _lambdaScopeFactory = lambdaScopeFactory ?? new LambdaScopeFactory(_nameFactory);
         }
 
-        if (layer.Filter != null)
+        public virtual Expression ApplyQuery(QueryLayer layer)
         {
-            expression = ApplyFilter(expression, layer.Filter);
+            ArgumentGuard.NotNull(layer, nameof(layer));
+
+            Expression expression = _source;
+
+            if (layer.Include != null)
+            {
+                expression = ApplyInclude(expression, layer.Include, layer.ResourceType);
+            }
+
+            if (layer.Filter != null)
+            {
+                expression = ApplyFilter(expression, layer.Filter);
+            }
+
+            if (layer.Sort != null)
+            {
+                expression = ApplySort(expression, layer.Sort);
+            }
+
+            if (layer.Pagination != null)
+            {
+                expression = ApplyPagination(expression, layer.Pagination);
+            }
+
+            if (!layer.Projection.IsNullOrEmpty())
+            {
+                expression = ApplyProjection(expression, layer.Projection, layer.ResourceType);
+            }
+
+            return expression;
         }
 
-        if (layer.Sort != null)
+        protected virtual Expression ApplyInclude(Expression source, IncludeExpression include, ResourceType resourceType)
         {
-            expression = ApplySort(expression, layer.Sort);
+            using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
+
+            var builder = new IncludeClauseBuilder(source, lambdaScope, resourceType);
+            return builder.ApplyInclude(include);
         }
 
-        if (layer.Pagination != null)
+        protected virtual Expression ApplyFilter(Expression source, FilterExpression filter)
         {
-            expression = ApplyPagination(expression, layer.Pagination);
+            using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
+
+            var builder = new WhereClauseBuilder(source, lambdaScope, _extensionType, _nameFactory);
+            return builder.ApplyWhere(filter);
         }
 
-        if (!layer.Projection.IsNullOrEmpty())
+        protected virtual Expression ApplySort(Expression source, SortExpression sort)
         {
-            expression = ApplyProjection(expression, layer.Projection, layer.ResourceType);
+            using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
+
+            var builder = new OrderClauseBuilder(source, lambdaScope, _extensionType);
+            return builder.ApplyOrderBy(sort);
         }
 
-        return expression;
-    }
+        protected virtual Expression ApplyPagination(Expression source, PaginationExpression pagination)
+        {
+            using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
 
-    protected virtual Expression ApplyInclude(Expression source, IncludeExpression include, ResourceType resourceType)
-    {
-        using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
+            var builder = new SkipTakeClauseBuilder(source, lambdaScope, _extensionType);
+            return builder.ApplySkipTake(pagination);
+        }
 
-        var builder = new IncludeClauseBuilder(source, lambdaScope, resourceType);
-        return builder.ApplyInclude(include);
-    }
+        protected virtual Expression ApplyProjection(Expression source, IDictionary<ResourceFieldAttribute, QueryLayer?> projection, ResourceType resourceType)
+        {
+            using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
 
-    protected virtual Expression ApplyFilter(Expression source, FilterExpression filter)
-    {
-        using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
-
-        var builder = new WhereClauseBuilder(source, lambdaScope, _extensionType, _nameFactory);
-        return builder.ApplyWhere(filter);
-    }
-
-    protected virtual Expression ApplySort(Expression source, SortExpression sort)
-    {
-        using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
-
-        var builder = new OrderClauseBuilder(source, lambdaScope, _extensionType);
-        return builder.ApplyOrderBy(sort);
-    }
-
-    protected virtual Expression ApplyPagination(Expression source, PaginationExpression pagination)
-    {
-        using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
-
-        var builder = new SkipTakeClauseBuilder(source, lambdaScope, _extensionType);
-        return builder.ApplySkipTake(pagination);
-    }
-
-    protected virtual Expression ApplyProjection(Expression source, IDictionary<ResourceFieldAttribute, QueryLayer?> projection, ResourceType resourceType)
-    {
-        using LambdaScope lambdaScope = _lambdaScopeFactory.CreateScope(_elementType);
-
-        var builder = new SelectClauseBuilder(source, lambdaScope, _entityModel, _extensionType, _nameFactory, _resourceFactory);
-        return builder.ApplySelect(projection, resourceType);
+            var builder = new SelectClauseBuilder(source, lambdaScope, _entityModel, _extensionType, _nameFactory, _resourceFactory);
+            return builder.ApplySelect(projection, resourceType);
+        }
     }
 }

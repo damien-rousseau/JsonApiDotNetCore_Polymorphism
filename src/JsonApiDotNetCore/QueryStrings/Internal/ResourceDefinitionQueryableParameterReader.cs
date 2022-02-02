@@ -7,70 +7,71 @@ using JsonApiDotNetCore.Queries.Expressions;
 using JsonApiDotNetCore.Resources;
 using Microsoft.Extensions.Primitives;
 
-namespace JsonApiDotNetCore.QueryStrings.Internal;
-
-/// <inheritdoc />
-[PublicAPI]
-public class ResourceDefinitionQueryableParameterReader : IResourceDefinitionQueryableParameterReader
+namespace JsonApiDotNetCore.QueryStrings.Internal
 {
-    private readonly IJsonApiRequest _request;
-    private readonly IResourceDefinitionAccessor _resourceDefinitionAccessor;
-    private readonly List<ExpressionInScope> _constraints = new();
-
-    public bool AllowEmptyValue => false;
-
-    public ResourceDefinitionQueryableParameterReader(IJsonApiRequest request, IResourceDefinitionAccessor resourceDefinitionAccessor)
-    {
-        ArgumentGuard.NotNull(request, nameof(request));
-        ArgumentGuard.NotNull(resourceDefinitionAccessor, nameof(resourceDefinitionAccessor));
-
-        _request = request;
-        _resourceDefinitionAccessor = resourceDefinitionAccessor;
-    }
-
     /// <inheritdoc />
-    public virtual bool IsEnabled(DisableQueryStringAttribute disableQueryStringAttribute)
+    [PublicAPI]
+    public class ResourceDefinitionQueryableParameterReader : IResourceDefinitionQueryableParameterReader
     {
-        return true;
-    }
+        private readonly IJsonApiRequest _request;
+        private readonly IResourceDefinitionAccessor _resourceDefinitionAccessor;
+        private readonly List<ExpressionInScope> _constraints = new();
 
-    /// <inheritdoc />
-    public virtual bool CanRead(string parameterName)
-    {
-        if (_request.Kind == EndpointKind.AtomicOperations)
+        public bool AllowEmptyValue => false;
+
+        public ResourceDefinitionQueryableParameterReader(IJsonApiRequest request, IResourceDefinitionAccessor resourceDefinitionAccessor)
         {
-            return false;
+            ArgumentGuard.NotNull(request, nameof(request));
+            ArgumentGuard.NotNull(resourceDefinitionAccessor, nameof(resourceDefinitionAccessor));
+
+            _request = request;
+            _resourceDefinitionAccessor = resourceDefinitionAccessor;
         }
 
-        object? queryableHandler = GetQueryableHandler(parameterName);
-        return queryableHandler != null;
-    }
-
-    /// <inheritdoc />
-    public virtual void Read(string parameterName, StringValues parameterValue)
-    {
-        object queryableHandler = GetQueryableHandler(parameterName)!;
-        var expressionInScope = new ExpressionInScope(null, new QueryableHandlerExpression(queryableHandler, parameterValue));
-        _constraints.Add(expressionInScope);
-    }
-
-    private object? GetQueryableHandler(string parameterName)
-    {
-        Type resourceClrType = (_request.SecondaryResourceType ?? _request.PrimaryResourceType)!.ClrType;
-        object? handler = _resourceDefinitionAccessor.GetQueryableHandlerForQueryStringParameter(resourceClrType, parameterName);
-
-        if (handler != null && _request.Kind != EndpointKind.Primary)
+        /// <inheritdoc />
+        public virtual bool IsEnabled(DisableQueryStringAttribute disableQueryStringAttribute)
         {
-            throw new InvalidQueryStringParameterException(parameterName, "Custom query string parameters cannot be used on nested resource endpoints.",
-                $"Query string parameter '{parameterName}' cannot be used on a nested resource endpoint.");
+            return true;
         }
 
-        return handler;
-    }
+        /// <inheritdoc />
+        public virtual bool CanRead(string parameterName)
+        {
+            if (_request.Kind == EndpointKind.AtomicOperations)
+            {
+                return false;
+            }
 
-    /// <inheritdoc />
-    public virtual IReadOnlyCollection<ExpressionInScope> GetConstraints()
-    {
-        return _constraints;
+            object? queryableHandler = GetQueryableHandler(parameterName);
+            return queryableHandler != null;
+        }
+
+        /// <inheritdoc />
+        public virtual void Read(string parameterName, StringValues parameterValue)
+        {
+            object queryableHandler = GetQueryableHandler(parameterName)!;
+            var expressionInScope = new ExpressionInScope(null, new QueryableHandlerExpression(queryableHandler, parameterValue));
+            _constraints.Add(expressionInScope);
+        }
+
+        private object? GetQueryableHandler(string parameterName)
+        {
+            Type resourceClrType = (_request.SecondaryResourceType ?? _request.PrimaryResourceType)!.ClrType;
+            object? handler = _resourceDefinitionAccessor.GetQueryableHandlerForQueryStringParameter(resourceClrType, parameterName);
+
+            if (handler != null && _request.Kind != EndpointKind.Primary)
+            {
+                throw new InvalidQueryStringParameterException(parameterName, "Custom query string parameters cannot be used on nested resource endpoints.",
+                    $"Query string parameter '{parameterName}' cannot be used on a nested resource endpoint.");
+            }
+
+            return handler;
+        }
+
+        /// <inheritdoc />
+        public virtual IReadOnlyCollection<ExpressionInScope> GetConstraints()
+        {
+            return _constraints;
+        }
     }
 }

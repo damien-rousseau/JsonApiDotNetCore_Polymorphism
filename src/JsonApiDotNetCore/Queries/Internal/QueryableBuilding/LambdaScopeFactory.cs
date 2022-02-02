@@ -1,24 +1,25 @@
 using System.Linq.Expressions;
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding;
-
-[PublicAPI]
-public sealed class LambdaScopeFactory
+namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding
 {
-    private readonly LambdaParameterNameFactory _nameFactory;
-
-    public LambdaScopeFactory(LambdaParameterNameFactory nameFactory)
+    [PublicAPI]
+    public sealed class LambdaScopeFactory
     {
-        ArgumentGuard.NotNull(nameFactory, nameof(nameFactory));
+        private readonly LambdaParameterNameFactory _nameFactory;
 
-        _nameFactory = nameFactory;
-    }
+        public LambdaScopeFactory(LambdaParameterNameFactory nameFactory)
+        {
+            ArgumentGuard.NotNull(nameFactory, nameof(nameFactory));
 
-    public LambdaScope CreateScope(Type elementType, Expression? accessorExpression = null)
-    {
-        ArgumentGuard.NotNull(elementType, nameof(elementType));
+            _nameFactory = nameFactory;
+        }
 
-        return new LambdaScope(_nameFactory, elementType, accessorExpression);
+        public LambdaScope CreateScope(Type elementType, Expression? accessorExpression = null)
+        {
+            ArgumentGuard.NotNull(elementType, nameof(elementType));
+
+            return new LambdaScope(_nameFactory, elementType, accessorExpression);
+        }
     }
 }

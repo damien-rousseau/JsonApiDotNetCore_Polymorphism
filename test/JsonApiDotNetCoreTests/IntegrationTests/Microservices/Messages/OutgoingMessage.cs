@@ -2,36 +2,37 @@ using System.Text.Json;
 using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-[NoResource]
-public sealed class OutgoingMessage
+namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages
 {
-    public long Id { get; set; }
-    public string Type { get; set; }
-    public int FormatVersion { get; set; }
-    public string Content { get; set; }
-
-    private OutgoingMessage(string type, int formatVersion, string content)
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    [NoResource]
+    public sealed class OutgoingMessage
     {
-        Type = type;
-        FormatVersion = formatVersion;
-        Content = content;
-    }
+        public long Id { get; set; }
+        public string Type { get; set; }
+        public int FormatVersion { get; set; }
+        public string Content { get; set; }
 
-    public T GetContentAs<T>()
-        where T : IMessageContent
-    {
-        string namespacePrefix = typeof(IMessageContent).Namespace!;
-        var contentType = System.Type.GetType($"{namespacePrefix}.{Type}", true)!;
+        private OutgoingMessage(string type, int formatVersion, string content)
+        {
+            Type = type;
+            FormatVersion = formatVersion;
+            Content = content;
+        }
 
-        return (T)JsonSerializer.Deserialize(Content, contentType)!;
-    }
+        public T GetContentAs<T>()
+            where T : IMessageContent
+        {
+            string namespacePrefix = typeof(IMessageContent).Namespace!;
+            var contentType = System.Type.GetType($"{namespacePrefix}.{Type}", true)!;
 
-    public static OutgoingMessage CreateFromContent(IMessageContent content)
-    {
-        string value = JsonSerializer.Serialize(content, content.GetType());
-        return new OutgoingMessage(content.GetType().Name, content.FormatVersion, value);
+            return (T)JsonSerializer.Deserialize(Content, contentType)!;
+        }
+
+        public static OutgoingMessage CreateFromContent(IMessageContent content)
+        {
+            string value = JsonSerializer.Serialize(content, content.GetType());
+            return new OutgoingMessage(content.GetType().Name, content.FormatVersion, value);
+        }
     }
 }

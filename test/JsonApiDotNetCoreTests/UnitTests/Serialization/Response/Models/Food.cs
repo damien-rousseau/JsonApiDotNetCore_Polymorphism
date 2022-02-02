@@ -2,11 +2,12 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCoreTests.UnitTests.Serialization.Response.Models;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public sealed class Food : Identifiable<int>
+namespace JsonApiDotNetCoreTests.UnitTests.Serialization.Response.Models
 {
-    [Attr]
-    public string Dish { get; set; } = null!;
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public sealed class Food : Identifiable<int>
+    {
+        [Attr]
+        public string Dish { get; set; } = null!;
+    }
 }

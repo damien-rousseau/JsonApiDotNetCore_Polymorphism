@@ -1,18 +1,19 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public sealed class GroupCreatedContent : IMessageContent
+namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages
 {
-    public int FormatVersion => 1;
-
-    public Guid GroupId { get; }
-    public string GroupName { get; }
-
-    public GroupCreatedContent(Guid groupId, string groupName)
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public sealed class GroupCreatedContent : IMessageContent
     {
-        GroupId = groupId;
-        GroupName = groupName;
+        public int FormatVersion => 1;
+
+        public Guid GroupId { get; }
+        public string GroupName { get; }
+
+        public GroupCreatedContent(Guid groupId, string groupName)
+        {
+            GroupId = groupId;
+            GroupName = groupName;
+        }
     }
 }

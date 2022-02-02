@@ -6,104 +6,105 @@ using JsonApiDotNetCore.Services;
 using NoEntityFrameworkExample.Models;
 using Npgsql;
 
-namespace NoEntityFrameworkExample.Services;
-
-[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-public sealed class WorkItemService : IResourceService<WorkItem, int>
+namespace NoEntityFrameworkExample.Services
 {
-    private readonly string _connectionString;
-
-    public WorkItemService(IConfiguration configuration)
+    [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+    public sealed class WorkItemService : IResourceService<WorkItem, int>
     {
-        string postgresPassword = Environment.GetEnvironmentVariable("PGPASSWORD") ?? "postgres";
-        _connectionString = configuration["Data:DefaultConnection"].Replace("###", postgresPassword);
-    }
+        private readonly string _connectionString;
 
-    public async Task<IReadOnlyCollection<WorkItem>> GetAsync(CancellationToken cancellationToken)
-    {
-        const string commandText = @"select * from ""WorkItems""";
-        var commandDefinition = new CommandDefinition(commandText, cancellationToken: cancellationToken);
-
-        return await QueryAsync(async connection => await connection.QueryAsync<WorkItem>(commandDefinition));
-    }
-
-    public async Task<WorkItem> GetAsync(int id, CancellationToken cancellationToken)
-    {
-        const string commandText = @"select * from ""WorkItems"" where ""Id""=@id";
-
-        var commandDefinition = new CommandDefinition(commandText, new
+        public WorkItemService(IConfiguration configuration)
         {
-            id
-        }, cancellationToken: cancellationToken);
+            string postgresPassword = Environment.GetEnvironmentVariable("PGPASSWORD") ?? "postgres";
+            _connectionString = configuration["Data:DefaultConnection"].Replace("###", postgresPassword);
+        }
 
-        IReadOnlyCollection<WorkItem> workItems = await QueryAsync(async connection => await connection.QueryAsync<WorkItem>(commandDefinition));
-        return workItems.Single();
-    }
-
-    public Task<object?> GetSecondaryAsync(int id, string relationshipName, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<object?> GetRelationshipAsync(int id, string relationshipName, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<WorkItem?> CreateAsync(WorkItem resource, CancellationToken cancellationToken)
-    {
-        const string commandText = @"insert into ""WorkItems"" (""Title"", ""IsBlocked"", ""DurationInHours"", ""ProjectId"") values " +
-            @"(@title, @isBlocked, @durationInHours, @projectId) returning ""Id"", ""Title"", ""IsBlocked"", ""DurationInHours"", ""ProjectId""";
-
-        var commandDefinition = new CommandDefinition(commandText, new
+        public async Task<IReadOnlyCollection<WorkItem>> GetAsync(CancellationToken cancellationToken)
         {
-            title = resource.Title,
-            isBlocked = resource.IsBlocked,
-            durationInHours = resource.DurationInHours,
-            projectId = resource.ProjectId
-        }, cancellationToken: cancellationToken);
+            const string commandText = @"select * from ""WorkItems""";
+            var commandDefinition = new CommandDefinition(commandText, cancellationToken: cancellationToken);
 
-        IReadOnlyCollection<WorkItem> workItems = await QueryAsync(async connection => await connection.QueryAsync<WorkItem>(commandDefinition));
-        return workItems.Single();
-    }
+            return await QueryAsync(async connection => await connection.QueryAsync<WorkItem>(commandDefinition));
+        }
 
-    public Task AddToToManyRelationshipAsync(int leftId, string relationshipName, ISet<IIdentifiable> rightResourceIds, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<WorkItem?> UpdateAsync(int id, WorkItem resource, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task SetRelationshipAsync(int leftId, string relationshipName, object? rightValue, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task DeleteAsync(int id, CancellationToken cancellationToken)
-    {
-        const string commandText = @"delete from ""WorkItems"" where ""Id""=@id";
-
-        await QueryAsync(async connection => await connection.QueryAsync<WorkItem>(new CommandDefinition(commandText, new
+        public async Task<WorkItem> GetAsync(int id, CancellationToken cancellationToken)
         {
-            id
-        }, cancellationToken: cancellationToken)));
-    }
+            const string commandText = @"select * from ""WorkItems"" where ""Id""=@id";
 
-    public Task RemoveFromToManyRelationshipAsync(int leftId, string relationshipName, ISet<IIdentifiable> rightResourceIds,
-        CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
+            var commandDefinition = new CommandDefinition(commandText, new
+            {
+                id
+            }, cancellationToken: cancellationToken);
 
-    private async Task<IReadOnlyCollection<T>> QueryAsync<T>(Func<IDbConnection, Task<IEnumerable<T>>> query)
-    {
-        using IDbConnection dbConnection = new NpgsqlConnection(_connectionString);
-        dbConnection.Open();
+            IReadOnlyCollection<WorkItem> workItems = await QueryAsync(async connection => await connection.QueryAsync<WorkItem>(commandDefinition));
+            return workItems.Single();
+        }
 
-        IEnumerable<T> resources = await query(dbConnection);
-        return resources.ToList();
+        public Task<object?> GetSecondaryAsync(int id, string relationshipName, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<object?> GetRelationshipAsync(int id, string relationshipName, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<WorkItem?> CreateAsync(WorkItem resource, CancellationToken cancellationToken)
+        {
+            const string commandText = @"insert into ""WorkItems"" (""Title"", ""IsBlocked"", ""DurationInHours"", ""ProjectId"") values " +
+                @"(@title, @isBlocked, @durationInHours, @projectId) returning ""Id"", ""Title"", ""IsBlocked"", ""DurationInHours"", ""ProjectId""";
+
+            var commandDefinition = new CommandDefinition(commandText, new
+            {
+                title = resource.Title,
+                isBlocked = resource.IsBlocked,
+                durationInHours = resource.DurationInHours,
+                projectId = resource.ProjectId
+            }, cancellationToken: cancellationToken);
+
+            IReadOnlyCollection<WorkItem> workItems = await QueryAsync(async connection => await connection.QueryAsync<WorkItem>(commandDefinition));
+            return workItems.Single();
+        }
+
+        public Task AddToToManyRelationshipAsync(int leftId, string relationshipName, ISet<IIdentifiable> rightResourceIds, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<WorkItem?> UpdateAsync(int id, WorkItem resource, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task SetRelationshipAsync(int leftId, string relationshipName, object? rightValue, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task DeleteAsync(int id, CancellationToken cancellationToken)
+        {
+            const string commandText = @"delete from ""WorkItems"" where ""Id""=@id";
+
+            await QueryAsync(async connection => await connection.QueryAsync<WorkItem>(new CommandDefinition(commandText, new
+            {
+                id
+            }, cancellationToken: cancellationToken)));
+        }
+
+        public Task RemoveFromToManyRelationshipAsync(int leftId, string relationshipName, ISet<IIdentifiable> rightResourceIds,
+            CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async Task<IReadOnlyCollection<T>> QueryAsync<T>(Func<IDbConnection, Task<IEnumerable<T>>> query)
+        {
+            using IDbConnection dbConnection = new NpgsqlConnection(_connectionString);
+            dbConnection.Open();
+
+            IEnumerable<T> resources = await query(dbConnection);
+            return resources.ToList();
+        }
     }
 }

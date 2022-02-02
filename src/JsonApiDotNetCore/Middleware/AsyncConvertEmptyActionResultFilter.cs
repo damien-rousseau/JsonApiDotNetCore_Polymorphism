@@ -2,31 +2,32 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 
-namespace JsonApiDotNetCore.Middleware;
-
-/// <inheritdoc />
-public sealed class AsyncConvertEmptyActionResultFilter : IAsyncConvertEmptyActionResultFilter
+namespace JsonApiDotNetCore.Middleware
 {
     /// <inheritdoc />
-    public async Task OnResultExecutionAsync(ResultExecutingContext context, ResultExecutionDelegate next)
+    public sealed class AsyncConvertEmptyActionResultFilter : IAsyncConvertEmptyActionResultFilter
     {
-        ArgumentGuard.NotNull(context, nameof(context));
-        ArgumentGuard.NotNull(next, nameof(next));
-
-        if (context.HttpContext.IsJsonApiRequest())
+        /// <inheritdoc />
+        public async Task OnResultExecutionAsync(ResultExecutingContext context, ResultExecutionDelegate next)
         {
-            if (context.Result is not ObjectResult objectResult || objectResult.Value == null)
+            ArgumentGuard.NotNull(context, nameof(context));
+            ArgumentGuard.NotNull(next, nameof(next));
+
+            if (context.HttpContext.IsJsonApiRequest())
             {
-                if (context.Result is IStatusCodeActionResult statusCodeResult)
+                if (context.Result is not ObjectResult objectResult || objectResult.Value == null)
                 {
-                    context.Result = new ObjectResult(null)
+                    if (context.Result is IStatusCodeActionResult statusCodeResult)
                     {
-                        StatusCode = statusCodeResult.StatusCode
-                    };
+                        context.Result = new ObjectResult(null)
+                        {
+                            StatusCode = statusCodeResult.StatusCode
+                        };
+                    }
                 }
             }
-        }
 
-        await next();
+            await next();
+        }
     }
 }

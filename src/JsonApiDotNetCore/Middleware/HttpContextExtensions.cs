@@ -1,28 +1,29 @@
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Http;
 
-namespace JsonApiDotNetCore.Middleware;
-
-[PublicAPI]
-public static class HttpContextExtensions
+namespace JsonApiDotNetCore.Middleware
 {
-    private const string IsJsonApiRequestKey = "JsonApiDotNetCore_IsJsonApiRequest";
-
-    /// <summary>
-    /// Indicates whether the currently executing HTTP request is being handled by JsonApiDotNetCore.
-    /// </summary>
-    public static bool IsJsonApiRequest(this HttpContext httpContext)
+    [PublicAPI]
+    public static class HttpContextExtensions
     {
-        ArgumentGuard.NotNull(httpContext, nameof(httpContext));
+        private const string IsJsonApiRequestKey = "JsonApiDotNetCore_IsJsonApiRequest";
 
-        string? value = httpContext.Items[IsJsonApiRequestKey] as string;
-        return value == bool.TrueString;
-    }
+        /// <summary>
+        /// Indicates whether the currently executing HTTP request is being handled by JsonApiDotNetCore.
+        /// </summary>
+        public static bool IsJsonApiRequest(this HttpContext httpContext)
+        {
+            ArgumentGuard.NotNull(httpContext, nameof(httpContext));
 
-    internal static void RegisterJsonApiRequest(this HttpContext httpContext)
-    {
-        ArgumentGuard.NotNull(httpContext, nameof(httpContext));
+            string? value = httpContext.Items[IsJsonApiRequestKey] as string;
+            return value == bool.TrueString;
+        }
 
-        httpContext.Items[IsJsonApiRequestKey] = bool.TrueString;
+        internal static void RegisterJsonApiRequest(this HttpContext httpContext)
+        {
+            ArgumentGuard.NotNull(httpContext, nameof(httpContext));
+
+            httpContext.Items[IsJsonApiRequestKey] = bool.TrueString;
+        }
     }
 }

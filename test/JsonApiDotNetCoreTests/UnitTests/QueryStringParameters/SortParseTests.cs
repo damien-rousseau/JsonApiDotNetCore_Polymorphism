@@ -10,111 +10,112 @@ using JsonApiDotNetCore.Serialization.Objects;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.UnitTests.QueryStringParameters;
-
-public sealed class SortParseTests : BaseParseTests
+namespace JsonApiDotNetCoreTests.UnitTests.QueryStringParameters
 {
-    private readonly SortQueryStringParameterReader _reader;
-
-    public SortParseTests()
+    public sealed class SortParseTests : BaseParseTests
     {
-        _reader = new SortQueryStringParameterReader(Request, ResourceGraph);
-    }
+        private readonly SortQueryStringParameterReader _reader;
 
-    [Theory]
-    [InlineData("sort", true)]
-    [InlineData("sort[posts]", true)]
-    [InlineData("sort[posts.comments]", true)]
-    [InlineData("sorting", false)]
-    [InlineData("sort[", false)]
-    [InlineData("sort]", false)]
-    public void Reader_Supports_Parameter_Name(string parameterName, bool expectCanParse)
-    {
-        // Act
-        bool canParse = _reader.CanRead(parameterName);
+        public SortParseTests()
+        {
+            _reader = new SortQueryStringParameterReader(Request, ResourceGraph);
+        }
 
-        // Assert
-        canParse.Should().Be(expectCanParse);
-    }
+        [Theory]
+        [InlineData("sort", true)]
+        [InlineData("sort[posts]", true)]
+        [InlineData("sort[posts.comments]", true)]
+        [InlineData("sorting", false)]
+        [InlineData("sort[", false)]
+        [InlineData("sort]", false)]
+        public void Reader_Supports_Parameter_Name(string parameterName, bool expectCanParse)
+        {
+            // Act
+            bool canParse = _reader.CanRead(parameterName);
 
-    [Theory]
-    [InlineData(JsonApiQueryStringParameters.Sort, false)]
-    [InlineData(JsonApiQueryStringParameters.All, false)]
-    [InlineData(JsonApiQueryStringParameters.None, true)]
-    [InlineData(JsonApiQueryStringParameters.Filter, true)]
-    public void Reader_Is_Enabled(JsonApiQueryStringParameters parametersDisabled, bool expectIsEnabled)
-    {
-        // Act
-        bool isEnabled = _reader.IsEnabled(new DisableQueryStringAttribute(parametersDisabled));
+            // Assert
+            canParse.Should().Be(expectCanParse);
+        }
 
-        // Assert
-        isEnabled.Should().Be(expectIsEnabled);
-    }
+        [Theory]
+        [InlineData(JsonApiQueryStringParameters.Sort, false)]
+        [InlineData(JsonApiQueryStringParameters.All, false)]
+        [InlineData(JsonApiQueryStringParameters.None, true)]
+        [InlineData(JsonApiQueryStringParameters.Filter, true)]
+        public void Reader_Is_Enabled(JsonApiQueryStringParameters parametersDisabled, bool expectIsEnabled)
+        {
+            // Act
+            bool isEnabled = _reader.IsEnabled(new DisableQueryStringAttribute(parametersDisabled));
 
-    [Theory]
-    [InlineData("sort[", "id", "Field name expected.")]
-    [InlineData("sort[abc.def]", "id", "Relationship 'abc' in 'abc.def' does not exist on resource type 'blogs'.")]
-    [InlineData("sort[posts.author]", "id", "Relationship 'author' in 'posts.author' must be a to-many relationship on resource type 'blogPosts'.")]
-    [InlineData("sort", "", "-, count function or field name expected.")]
-    [InlineData("sort", " ", "Unexpected whitespace.")]
-    [InlineData("sort", "-", "Count function or field name expected.")]
-    [InlineData("sort", "abc", "Attribute 'abc' does not exist on resource type 'blogs'.")]
-    [InlineData("sort[posts]", "author", "Attribute 'author' does not exist on resource type 'blogPosts'.")]
-    [InlineData("sort[posts]", "author.livingAddress", "Attribute 'livingAddress' in 'author.livingAddress' does not exist on resource type 'webAccounts'.")]
-    [InlineData("sort", "-count", "( expected.")]
-    [InlineData("sort", "count", "( expected.")]
-    [InlineData("sort", "count(posts", ") expected.")]
-    [InlineData("sort", "count(", "Field name expected.")]
-    [InlineData("sort", "count(-abc)", "Field name expected.")]
-    [InlineData("sort", "count(abc)", "Relationship 'abc' does not exist on resource type 'blogs'.")]
-    [InlineData("sort", "count(id)", "Relationship 'id' does not exist on resource type 'blogs'.")]
-    [InlineData("sort[posts]", "count(author)", "Relationship 'author' must be a to-many relationship on resource type 'blogPosts'.")]
-    [InlineData("sort[posts]", "caption,", "-, count function or field name expected.")]
-    [InlineData("sort[posts]", "caption:", ", expected.")]
-    [InlineData("sort[posts]", "caption,-", "Count function or field name expected.")]
-    public void Reader_Read_Fails(string parameterName, string parameterValue, string errorMessage)
-    {
-        // Act
-        Action action = () => _reader.Read(parameterName, parameterValue);
+            // Assert
+            isEnabled.Should().Be(expectIsEnabled);
+        }
 
-        // Assert
-        InvalidQueryStringParameterException exception = action.Should().ThrowExactly<InvalidQueryStringParameterException>().And;
+        [Theory]
+        [InlineData("sort[", "id", "Field name expected.")]
+        [InlineData("sort[abc.def]", "id", "Relationship 'abc' in 'abc.def' does not exist on resource type 'blogs'.")]
+        [InlineData("sort[posts.author]", "id", "Relationship 'author' in 'posts.author' must be a to-many relationship on resource type 'blogPosts'.")]
+        [InlineData("sort", "", "-, count function or field name expected.")]
+        [InlineData("sort", " ", "Unexpected whitespace.")]
+        [InlineData("sort", "-", "Count function or field name expected.")]
+        [InlineData("sort", "abc", "Attribute 'abc' does not exist on resource type 'blogs'.")]
+        [InlineData("sort[posts]", "author", "Attribute 'author' does not exist on resource type 'blogPosts'.")]
+        [InlineData("sort[posts]", "author.livingAddress", "Attribute 'livingAddress' in 'author.livingAddress' does not exist on resource type 'webAccounts'.")]
+        [InlineData("sort", "-count", "( expected.")]
+        [InlineData("sort", "count", "( expected.")]
+        [InlineData("sort", "count(posts", ") expected.")]
+        [InlineData("sort", "count(", "Field name expected.")]
+        [InlineData("sort", "count(-abc)", "Field name expected.")]
+        [InlineData("sort", "count(abc)", "Relationship 'abc' does not exist on resource type 'blogs'.")]
+        [InlineData("sort", "count(id)", "Relationship 'id' does not exist on resource type 'blogs'.")]
+        [InlineData("sort[posts]", "count(author)", "Relationship 'author' must be a to-many relationship on resource type 'blogPosts'.")]
+        [InlineData("sort[posts]", "caption,", "-, count function or field name expected.")]
+        [InlineData("sort[posts]", "caption:", ", expected.")]
+        [InlineData("sort[posts]", "caption,-", "Count function or field name expected.")]
+        public void Reader_Read_Fails(string parameterName, string parameterValue, string errorMessage)
+        {
+            // Act
+            Action action = () => _reader.Read(parameterName, parameterValue);
 
-        exception.ParameterName.Should().Be(parameterName);
-        exception.Errors.ShouldHaveCount(1);
+            // Assert
+            InvalidQueryStringParameterException exception = action.Should().ThrowExactly<InvalidQueryStringParameterException>().And;
 
-        ErrorObject error = exception.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        error.Title.Should().Be("The specified sort is invalid.");
-        error.Detail.Should().Be(errorMessage);
-        error.Source.ShouldNotBeNull();
-        error.Source.Parameter.Should().Be(parameterName);
-    }
+            exception.ParameterName.Should().Be(parameterName);
+            exception.Errors.ShouldHaveCount(1);
 
-    [Theory]
-    [InlineData("sort", "id", null, "id")]
-    [InlineData("sort", "count(posts),-id", null, "count(posts),-id")]
-    [InlineData("sort", "-count(posts),id", null, "-count(posts),id")]
-    [InlineData("sort[posts]", "count(comments),-id", "posts", "count(comments),-id")]
-    [InlineData("sort[owner.posts]", "-caption", "owner.posts", "-caption")]
-    [InlineData("sort[posts]", "author.userName", "posts", "author.userName")]
-    [InlineData("sort[posts]", "-caption,-author.userName", "posts", "-caption,-author.userName")]
-    [InlineData("sort[posts]", "caption,author.userName,-id", "posts", "caption,author.userName,-id")]
-    [InlineData("sort[posts.labels]", "id,name", "posts.labels", "id,name")]
-    [InlineData("sort[posts.comments]", "-createdAt,author.displayName,author.preferences.useDarkTheme", "posts.comments",
-        "-createdAt,author.displayName,author.preferences.useDarkTheme")]
-    public void Reader_Read_Succeeds(string parameterName, string parameterValue, string scopeExpected, string valueExpected)
-    {
-        // Act
-        _reader.Read(parameterName, parameterValue);
+            ErrorObject error = exception.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            error.Title.Should().Be("The specified sort is invalid.");
+            error.Detail.Should().Be(errorMessage);
+            error.Source.ShouldNotBeNull();
+            error.Source.Parameter.Should().Be(parameterName);
+        }
 
-        IReadOnlyCollection<ExpressionInScope> constraints = _reader.GetConstraints();
+        [Theory]
+        [InlineData("sort", "id", null, "id")]
+        [InlineData("sort", "count(posts),-id", null, "count(posts),-id")]
+        [InlineData("sort", "-count(posts),id", null, "-count(posts),id")]
+        [InlineData("sort[posts]", "count(comments),-id", "posts", "count(comments),-id")]
+        [InlineData("sort[owner.posts]", "-caption", "owner.posts", "-caption")]
+        [InlineData("sort[posts]", "author.userName", "posts", "author.userName")]
+        [InlineData("sort[posts]", "-caption,-author.userName", "posts", "-caption,-author.userName")]
+        [InlineData("sort[posts]", "caption,author.userName,-id", "posts", "caption,author.userName,-id")]
+        [InlineData("sort[posts.labels]", "id,name", "posts.labels", "id,name")]
+        [InlineData("sort[posts.comments]", "-createdAt,author.displayName,author.preferences.useDarkTheme", "posts.comments",
+            "-createdAt,author.displayName,author.preferences.useDarkTheme")]
+        public void Reader_Read_Succeeds(string parameterName, string parameterValue, string scopeExpected, string valueExpected)
+        {
+            // Act
+            _reader.Read(parameterName, parameterValue);
 
-        // Assert
-        ResourceFieldChainExpression? scope = constraints.Select(expressionInScope => expressionInScope.Scope).Single();
-        scope?.ToString().Should().Be(scopeExpected);
+            IReadOnlyCollection<ExpressionInScope> constraints = _reader.GetConstraints();
 
-        QueryExpression value = constraints.Select(expressionInScope => expressionInScope.Expression).Single();
-        value.ToString().Should().Be(valueExpected);
+            // Assert
+            ResourceFieldChainExpression? scope = constraints.Select(expressionInScope => expressionInScope.Scope).Single();
+            scope?.ToString().Should().Be(scopeExpected);
+
+            QueryExpression value = constraints.Select(expressionInScope => expressionInScope.Expression).Single();
+            value.ToString().Should().Be(valueExpected);
+        }
     }
 }

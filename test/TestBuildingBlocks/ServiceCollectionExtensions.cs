@@ -4,35 +4,36 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace TestBuildingBlocks;
-
-internal static class ServiceCollectionExtensions
+namespace TestBuildingBlocks
 {
-    public static void ReplaceControllers(this IServiceCollection services, TestControllerProvider provider)
+    internal static class ServiceCollectionExtensions
     {
-        ArgumentGuard.NotNull(services, nameof(services));
-
-        services.AddMvcCore().ConfigureApplicationPartManager(manager =>
+        public static void ReplaceControllers(this IServiceCollection services, TestControllerProvider provider)
         {
-            RemoveExistingControllerFeatureProviders(manager);
+            ArgumentGuard.NotNull(services, nameof(services));
 
-            foreach (Assembly assembly in provider.ControllerAssemblies)
+            services.AddMvcCore().ConfigureApplicationPartManager(manager =>
             {
-                manager.ApplicationParts.Add(new AssemblyPart(assembly));
-            }
+                RemoveExistingControllerFeatureProviders(manager);
 
-            manager.FeatureProviders.Add(provider);
-        });
-    }
+                foreach (Assembly assembly in provider.ControllerAssemblies)
+                {
+                    manager.ApplicationParts.Add(new AssemblyPart(assembly));
+                }
 
-    private static void RemoveExistingControllerFeatureProviders(ApplicationPartManager manager)
-    {
-        IApplicationFeatureProvider<ControllerFeature>[] providers = manager.FeatureProviders.OfType<IApplicationFeatureProvider<ControllerFeature>>()
-            .ToArray();
+                manager.FeatureProviders.Add(provider);
+            });
+        }
 
-        foreach (IApplicationFeatureProvider<ControllerFeature> provider in providers)
+        private static void RemoveExistingControllerFeatureProviders(ApplicationPartManager manager)
         {
-            manager.FeatureProviders.Remove(provider);
+            IApplicationFeatureProvider<ControllerFeature>[] providers = manager.FeatureProviders.OfType<IApplicationFeatureProvider<ControllerFeature>>()
+                .ToArray();
+
+            foreach (IApplicationFeatureProvider<ControllerFeature> provider in providers)
+            {
+                manager.FeatureProviders.Remove(provider);
+            }
         }
     }
 }

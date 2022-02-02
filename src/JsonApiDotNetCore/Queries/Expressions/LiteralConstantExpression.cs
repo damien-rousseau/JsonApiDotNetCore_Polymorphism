@@ -1,52 +1,53 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Expressions;
-
-/// <summary>
-/// Represents a non-null constant value, resulting from text such as: equals(firstName,'Jack')
-/// </summary>
-[PublicAPI]
-public class LiteralConstantExpression : IdentifierExpression
+namespace JsonApiDotNetCore.Queries.Expressions
 {
-    public string Value { get; }
-
-    public LiteralConstantExpression(string text)
+    /// <summary>
+    /// Represents a non-null constant value, resulting from text such as: equals(firstName,'Jack')
+    /// </summary>
+    [PublicAPI]
+    public class LiteralConstantExpression : IdentifierExpression
     {
-        ArgumentGuard.NotNull(text, nameof(text));
+        public string Value { get; }
 
-        Value = text;
-    }
-
-    public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
-    {
-        return visitor.VisitLiteralConstant(this, argument);
-    }
-
-    public override string ToString()
-    {
-        string value = Value.Replace("\'", "\'\'");
-        return $"'{value}'";
-    }
-
-    public override bool Equals(object? obj)
-    {
-        if (ReferenceEquals(this, obj))
+        public LiteralConstantExpression(string text)
         {
-            return true;
+            ArgumentGuard.NotNull(text, nameof(text));
+
+            Value = text;
         }
 
-        if (obj is null || GetType() != obj.GetType())
+        public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
         {
-            return false;
+            return visitor.VisitLiteralConstant(this, argument);
         }
 
-        var other = (LiteralConstantExpression)obj;
+        public override string ToString()
+        {
+            string value = Value.Replace("\'", "\'\'");
+            return $"'{value}'";
+        }
 
-        return Value == other.Value;
-    }
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
 
-    public override int GetHashCode()
-    {
-        return Value.GetHashCode();
+            if (obj is null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            var other = (LiteralConstantExpression)obj;
+
+            return Value == other.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
     }
 }

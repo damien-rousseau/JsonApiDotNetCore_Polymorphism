@@ -1,51 +1,52 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Expressions;
-
-/// <summary>
-/// Represents an element in <see cref="PaginationQueryStringValueExpression" />.
-/// </summary>
-[PublicAPI]
-public class PaginationElementQueryStringValueExpression : QueryExpression
+namespace JsonApiDotNetCore.Queries.Expressions
 {
-    public ResourceFieldChainExpression? Scope { get; }
-    public int Value { get; }
-
-    public PaginationElementQueryStringValueExpression(ResourceFieldChainExpression? scope, int value)
+    /// <summary>
+    /// Represents an element in <see cref="PaginationQueryStringValueExpression" />.
+    /// </summary>
+    [PublicAPI]
+    public class PaginationElementQueryStringValueExpression : QueryExpression
     {
-        Scope = scope;
-        Value = value;
-    }
+        public ResourceFieldChainExpression? Scope { get; }
+        public int Value { get; }
 
-    public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
-    {
-        return visitor.PaginationElementQueryStringValue(this, argument);
-    }
-
-    public override string ToString()
-    {
-        return Scope == null ? Value.ToString() : $"{Scope}: {Value}";
-    }
-
-    public override bool Equals(object? obj)
-    {
-        if (ReferenceEquals(this, obj))
+        public PaginationElementQueryStringValueExpression(ResourceFieldChainExpression? scope, int value)
         {
-            return true;
+            Scope = scope;
+            Value = value;
         }
 
-        if (obj is null || GetType() != obj.GetType())
+        public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
         {
-            return false;
+            return visitor.PaginationElementQueryStringValue(this, argument);
         }
 
-        var other = (PaginationElementQueryStringValueExpression)obj;
+        public override string ToString()
+        {
+            return Scope == null ? Value.ToString() : $"{Scope}: {Value}";
+        }
 
-        return Equals(Scope, other.Scope) && Value == other.Value;
-    }
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
 
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Scope, Value);
+            if (obj is null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            var other = (PaginationElementQueryStringValueExpression)obj;
+
+            return Equals(Scope, other.Scope) && Value == other.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Scope, Value);
+        }
     }
 }

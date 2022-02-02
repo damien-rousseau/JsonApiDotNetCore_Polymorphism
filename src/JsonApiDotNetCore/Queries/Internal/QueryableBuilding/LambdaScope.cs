@@ -1,32 +1,33 @@
 using System.Linq.Expressions;
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding;
-
-/// <summary>
-/// Contains details on a lambda expression, such as the name of the selector "x" in "x => x.Name".
-/// </summary>
-[PublicAPI]
-public sealed class LambdaScope : IDisposable
+namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding
 {
-    private readonly LambdaParameterNameScope _parameterNameScope;
-
-    public ParameterExpression Parameter { get; }
-    public Expression Accessor { get; }
-
-    public LambdaScope(LambdaParameterNameFactory nameFactory, Type elementType, Expression? accessorExpression)
+    /// <summary>
+    /// Contains details on a lambda expression, such as the name of the selector "x" in "x => x.Name".
+    /// </summary>
+    [PublicAPI]
+    public sealed class LambdaScope : IDisposable
     {
-        ArgumentGuard.NotNull(nameFactory, nameof(nameFactory));
-        ArgumentGuard.NotNull(elementType, nameof(elementType));
+        private readonly LambdaParameterNameScope _parameterNameScope;
 
-        _parameterNameScope = nameFactory.Create(elementType.Name);
-        Parameter = Expression.Parameter(elementType, _parameterNameScope.Name);
+        public ParameterExpression Parameter { get; }
+        public Expression Accessor { get; }
 
-        Accessor = accessorExpression ?? Parameter;
-    }
+        public LambdaScope(LambdaParameterNameFactory nameFactory, Type elementType, Expression? accessorExpression)
+        {
+            ArgumentGuard.NotNull(nameFactory, nameof(nameFactory));
+            ArgumentGuard.NotNull(elementType, nameof(elementType));
 
-    public void Dispose()
-    {
-        _parameterNameScope.Dispose();
+            _parameterNameScope = nameFactory.Create(elementType.Name);
+            Parameter = Expression.Parameter(elementType, _parameterNameScope.Name);
+
+            Accessor = accessorExpression ?? Parameter;
+        }
+
+        public void Dispose()
+        {
+            _parameterNameScope.Dispose();
+        }
     }
 }

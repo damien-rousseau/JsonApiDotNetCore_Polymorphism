@@ -4,7 +4,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Examples\NoEntityFrameworkExample\NoEntityFrameworkExample.csproj" />
     <ProjectReference Include="..\TestBuildingBlocks\TestBuildingBlocks.csproj" />
   </ItemGroup>
 

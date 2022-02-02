@@ -1,57 +1,58 @@
 using Humanizer;
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Expressions;
-
-/// <summary>
-/// Represents a comparison filter function, resulting from text such as: equals(name,'Joe')
-/// </summary>
-[PublicAPI]
-public class ComparisonExpression : FilterExpression
+namespace JsonApiDotNetCore.Queries.Expressions
 {
-    public ComparisonOperator Operator { get; }
-    public QueryExpression Left { get; }
-    public QueryExpression Right { get; }
-
-    public ComparisonExpression(ComparisonOperator @operator, QueryExpression left, QueryExpression right)
+    /// <summary>
+    /// Represents a comparison filter function, resulting from text such as: equals(name,'Joe')
+    /// </summary>
+    [PublicAPI]
+    public class ComparisonExpression : FilterExpression
     {
-        ArgumentGuard.NotNull(left, nameof(left));
-        ArgumentGuard.NotNull(right, nameof(right));
+        public ComparisonOperator Operator { get; }
+        public QueryExpression Left { get; }
+        public QueryExpression Right { get; }
 
-        Operator = @operator;
-        Left = left;
-        Right = right;
-    }
-
-    public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
-    {
-        return visitor.VisitComparison(this, argument);
-    }
-
-    public override string ToString()
-    {
-        return $"{Operator.ToString().Camelize()}({Left},{Right})";
-    }
-
-    public override bool Equals(object? obj)
-    {
-        if (ReferenceEquals(this, obj))
+        public ComparisonExpression(ComparisonOperator @operator, QueryExpression left, QueryExpression right)
         {
-            return true;
+            ArgumentGuard.NotNull(left, nameof(left));
+            ArgumentGuard.NotNull(right, nameof(right));
+
+            Operator = @operator;
+            Left = left;
+            Right = right;
         }
 
-        if (obj is null || GetType() != obj.GetType())
+        public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
         {
-            return false;
+            return visitor.VisitComparison(this, argument);
         }
 
-        var other = (ComparisonExpression)obj;
+        public override string ToString()
+        {
+            return $"{Operator.ToString().Camelize()}({Left},{Right})";
+        }
 
-        return Operator == other.Operator && Left.Equals(other.Left) && Right.Equals(other.Right);
-    }
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
 
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Operator, Left, Right);
+            if (obj is null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            var other = (ComparisonExpression)obj;
+
+            return Operator == other.Operator && Left.Equals(other.Left) && Right.Equals(other.Right);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Operator, Left, Right);
+        }
     }
 }

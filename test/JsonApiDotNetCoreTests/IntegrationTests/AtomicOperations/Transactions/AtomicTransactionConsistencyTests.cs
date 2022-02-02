@@ -7,155 +7,156 @@ using Microsoft.Extensions.DependencyInjection;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations.Transactions;
-
-public sealed class AtomicTransactionConsistencyTests : IClassFixture<IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext>>
+namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations.Transactions
 {
-    private readonly IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext> _testContext;
-    private readonly OperationsFakers _fakers = new();
-
-    public AtomicTransactionConsistencyTests(IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext> testContext)
+    public sealed class AtomicTransactionConsistencyTests : IClassFixture<IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext>>
     {
-        _testContext = testContext;
+        private readonly IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext> _testContext;
+        private readonly OperationsFakers _fakers = new();
 
-        testContext.UseController<OperationsController>();
-
-        testContext.ConfigureServicesAfterStartup(services =>
+        public AtomicTransactionConsistencyTests(IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext> testContext)
         {
-            services.AddResourceRepository<PerformerRepository>();
-            services.AddResourceRepository<MusicTrackRepository>();
-            services.AddResourceRepository<LyricRepository>();
+            _testContext = testContext;
 
-            string postgresPassword = Environment.GetEnvironmentVariable("PGPASSWORD") ?? "postgres";
-            string dbConnectionString = $"Host=localhost;Port=5432;Database=JsonApiTest-{Guid.NewGuid():N};User ID=postgres;Password={postgresPassword}";
+            testContext.UseController<OperationsController>();
 
-            services.AddDbContext<ExtraDbContext>(options => options.UseNpgsql(dbConnectionString));
-        });
-    }
-
-    [Fact]
-    public async Task Cannot_use_non_transactional_repository()
-    {
-        // Arrange
-        var requestBody = new
-        {
-            atomic__operations = new object[]
+            testContext.ConfigureServicesAfterStartup(services =>
             {
-                new
+                services.AddResourceRepository<PerformerRepository>();
+                services.AddResourceRepository<MusicTrackRepository>();
+                services.AddResourceRepository<LyricRepository>();
+
+                string postgresPassword = Environment.GetEnvironmentVariable("PGPASSWORD") ?? "postgres";
+                string dbConnectionString = $"Host=localhost;Port=5432;Database=JsonApiTest-{Guid.NewGuid():N};User ID=postgres;Password={postgresPassword}";
+
+                services.AddDbContext<ExtraDbContext>(options => options.UseNpgsql(dbConnectionString));
+            });
+        }
+
+        [Fact]
+        public async Task Cannot_use_non_transactional_repository()
+        {
+            // Arrange
+            var requestBody = new
+            {
+                atomic__operations = new object[]
                 {
-                    op = "add",
-                    data = new
+                    new
                     {
-                        type = "performers",
-                        attributes = new
+                        op = "add",
+                        data = new
                         {
+                            type = "performers",
+                            attributes = new
+                            {
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
 
-        const string route = "/operations";
+            const string route = "/operations";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAtomicAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAtomicAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.UnprocessableEntity);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.UnprocessableEntity);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        error.Title.Should().Be("Unsupported resource type in atomic:operations request.");
-        error.Detail.Should().Be("Operations on resources of type 'performers' cannot be used because transaction support is unavailable.");
-        error.Source.ShouldNotBeNull();
-        error.Source.Pointer.Should().Be("/atomic:operations[0]");
-    }
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+            error.Title.Should().Be("Unsupported resource type in atomic:operations request.");
+            error.Detail.Should().Be("Operations on resources of type 'performers' cannot be used because transaction support is unavailable.");
+            error.Source.ShouldNotBeNull();
+            error.Source.Pointer.Should().Be("/atomic:operations[0]");
+        }
 
-    [Fact]
-    public async Task Cannot_use_transactional_repository_without_active_transaction()
-    {
-        // Arrange
-        string newTrackTitle = _fakers.MusicTrack.Generate().Title;
-
-        var requestBody = new
+        [Fact]
+        public async Task Cannot_use_transactional_repository_without_active_transaction()
         {
-            atomic__operations = new object[]
+            // Arrange
+            string newTrackTitle = _fakers.MusicTrack.Generate().Title;
+
+            var requestBody = new
             {
-                new
+                atomic__operations = new object[]
                 {
-                    op = "add",
-                    data = new
+                    new
                     {
-                        type = "musicTracks",
-                        attributes = new
+                        op = "add",
+                        data = new
                         {
-                            title = newTrackTitle
+                            type = "musicTracks",
+                            attributes = new
+                            {
+                                title = newTrackTitle
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
 
-        const string route = "/operations";
+            const string route = "/operations";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAtomicAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAtomicAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.UnprocessableEntity);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.UnprocessableEntity);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        error.Title.Should().Be("Unsupported combination of resource types in atomic:operations request.");
-        error.Detail.Should().Be("All operations need to participate in a single shared transaction, which is not the case for this request.");
-        error.Source.ShouldNotBeNull();
-        error.Source.Pointer.Should().Be("/atomic:operations[0]");
-    }
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+            error.Title.Should().Be("Unsupported combination of resource types in atomic:operations request.");
+            error.Detail.Should().Be("All operations need to participate in a single shared transaction, which is not the case for this request.");
+            error.Source.ShouldNotBeNull();
+            error.Source.Pointer.Should().Be("/atomic:operations[0]");
+        }
 
-    [Fact]
-    public async Task Cannot_use_distributed_transaction()
-    {
-        // Arrange
-        string newLyricText = _fakers.Lyric.Generate().Text;
-
-        var requestBody = new
+        [Fact]
+        public async Task Cannot_use_distributed_transaction()
         {
-            atomic__operations = new object[]
+            // Arrange
+            string newLyricText = _fakers.Lyric.Generate().Text;
+
+            var requestBody = new
             {
-                new
+                atomic__operations = new object[]
                 {
-                    op = "add",
-                    data = new
+                    new
                     {
-                        type = "lyrics",
-                        attributes = new
+                        op = "add",
+                        data = new
                         {
-                            text = newLyricText
+                            type = "lyrics",
+                            attributes = new
+                            {
+                                text = newLyricText
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
 
-        const string route = "/operations";
+            const string route = "/operations";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAtomicAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAtomicAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.UnprocessableEntity);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.UnprocessableEntity);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        error.Title.Should().Be("Unsupported combination of resource types in atomic:operations request.");
-        error.Detail.Should().Be("All operations need to participate in a single shared transaction, which is not the case for this request.");
-        error.Source.ShouldNotBeNull();
-        error.Source.Pointer.Should().Be("/atomic:operations[0]");
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+            error.Title.Should().Be("Unsupported combination of resource types in atomic:operations request.");
+            error.Detail.Should().Be("All operations need to participate in a single shared transaction, which is not the case for this request.");
+            error.Source.ShouldNotBeNull();
+            error.Source.Pointer.Should().Be("/atomic:operations[0]");
+        }
     }
 }

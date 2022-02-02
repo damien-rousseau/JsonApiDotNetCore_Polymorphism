@@ -1,51 +1,52 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Configuration;
-
-[PublicAPI]
-public sealed class PageNumber : IEquatable<PageNumber>
+namespace JsonApiDotNetCore.Configuration
 {
-    public static readonly PageNumber ValueOne = new(1);
-
-    public int OneBasedValue { get; }
-
-    public PageNumber(int oneBasedValue)
+    [PublicAPI]
+    public sealed class PageNumber : IEquatable<PageNumber>
     {
-        if (oneBasedValue < 1)
+        public static readonly PageNumber ValueOne = new(1);
+
+        public int OneBasedValue { get; }
+
+        public PageNumber(int oneBasedValue)
         {
-            throw new ArgumentOutOfRangeException(nameof(oneBasedValue));
+            if (oneBasedValue < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(oneBasedValue));
+            }
+
+            OneBasedValue = oneBasedValue;
         }
 
-        OneBasedValue = oneBasedValue;
-    }
-
-    public bool Equals(PageNumber? other)
-    {
-        if (ReferenceEquals(null, other))
+        public bool Equals(PageNumber? other)
         {
-            return false;
+            if (ReferenceEquals(null, other))
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            return OneBasedValue == other.OneBasedValue;
         }
 
-        if (ReferenceEquals(this, other))
+        public override bool Equals(object? other)
         {
-            return true;
+            return Equals(other as PageNumber);
         }
 
-        return OneBasedValue == other.OneBasedValue;
-    }
+        public override int GetHashCode()
+        {
+            return OneBasedValue.GetHashCode();
+        }
 
-    public override bool Equals(object? other)
-    {
-        return Equals(other as PageNumber);
-    }
-
-    public override int GetHashCode()
-    {
-        return OneBasedValue.GetHashCode();
-    }
-
-    public override string ToString()
-    {
-        return OneBasedValue.ToString();
+        public override string ToString()
+        {
+            return OneBasedValue.ToString();
+        }
     }
 }

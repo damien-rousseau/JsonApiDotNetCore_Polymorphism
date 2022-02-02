@@ -5,69 +5,70 @@ using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Expressions;
-
-[PublicAPI]
-public static class SparseFieldSetExpressionExtensions
+namespace JsonApiDotNetCore.Queries.Expressions
 {
-    public static SparseFieldSetExpression? Including<TResource>(this SparseFieldSetExpression? sparseFieldSet,
-        Expression<Func<TResource, dynamic?>> fieldSelector, IResourceGraph resourceGraph)
-        where TResource : class, IIdentifiable
+    [PublicAPI]
+    public static class SparseFieldSetExpressionExtensions
     {
-        ArgumentGuard.NotNull(fieldSelector, nameof(fieldSelector));
-        ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
-
-        SparseFieldSetExpression? newSparseFieldSet = sparseFieldSet;
-
-        foreach (ResourceFieldAttribute field in resourceGraph.GetFields(fieldSelector))
+        public static SparseFieldSetExpression? Including<TResource>(this SparseFieldSetExpression? sparseFieldSet,
+            Expression<Func<TResource, dynamic?>> fieldSelector, IResourceGraph resourceGraph)
+            where TResource : class, IIdentifiable
         {
-            newSparseFieldSet = IncludeField(newSparseFieldSet, field);
+            ArgumentGuard.NotNull(fieldSelector, nameof(fieldSelector));
+            ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
+
+            SparseFieldSetExpression? newSparseFieldSet = sparseFieldSet;
+
+            foreach (ResourceFieldAttribute field in resourceGraph.GetFields(fieldSelector))
+            {
+                newSparseFieldSet = IncludeField(newSparseFieldSet, field);
+            }
+
+            return newSparseFieldSet;
         }
 
-        return newSparseFieldSet;
-    }
-
-    private static SparseFieldSetExpression? IncludeField(SparseFieldSetExpression? sparseFieldSet, ResourceFieldAttribute fieldToInclude)
-    {
-        if (sparseFieldSet == null || sparseFieldSet.Fields.Contains(fieldToInclude))
+        private static SparseFieldSetExpression? IncludeField(SparseFieldSetExpression? sparseFieldSet, ResourceFieldAttribute fieldToInclude)
         {
-            return sparseFieldSet;
+            if (sparseFieldSet == null || sparseFieldSet.Fields.Contains(fieldToInclude))
+            {
+                return sparseFieldSet;
+            }
+
+            IImmutableSet<ResourceFieldAttribute> newSparseFieldSet = sparseFieldSet.Fields.Add(fieldToInclude);
+            return new SparseFieldSetExpression(newSparseFieldSet);
         }
 
-        IImmutableSet<ResourceFieldAttribute> newSparseFieldSet = sparseFieldSet.Fields.Add(fieldToInclude);
-        return new SparseFieldSetExpression(newSparseFieldSet);
-    }
-
-    public static SparseFieldSetExpression? Excluding<TResource>(this SparseFieldSetExpression? sparseFieldSet,
-        Expression<Func<TResource, dynamic?>> fieldSelector, IResourceGraph resourceGraph)
-        where TResource : class, IIdentifiable
-    {
-        ArgumentGuard.NotNull(fieldSelector, nameof(fieldSelector));
-        ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
-
-        SparseFieldSetExpression? newSparseFieldSet = sparseFieldSet;
-
-        foreach (ResourceFieldAttribute field in resourceGraph.GetFields(fieldSelector))
+        public static SparseFieldSetExpression? Excluding<TResource>(this SparseFieldSetExpression? sparseFieldSet,
+            Expression<Func<TResource, dynamic?>> fieldSelector, IResourceGraph resourceGraph)
+            where TResource : class, IIdentifiable
         {
-            newSparseFieldSet = ExcludeField(newSparseFieldSet, field);
+            ArgumentGuard.NotNull(fieldSelector, nameof(fieldSelector));
+            ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
+
+            SparseFieldSetExpression? newSparseFieldSet = sparseFieldSet;
+
+            foreach (ResourceFieldAttribute field in resourceGraph.GetFields(fieldSelector))
+            {
+                newSparseFieldSet = ExcludeField(newSparseFieldSet, field);
+            }
+
+            return newSparseFieldSet;
         }
 
-        return newSparseFieldSet;
-    }
-
-    private static SparseFieldSetExpression? ExcludeField(SparseFieldSetExpression? sparseFieldSet, ResourceFieldAttribute fieldToExclude)
-    {
-        // Design tradeoff: When the sparse fieldset is empty, it means all fields will be selected.
-        // Adding an exclusion in that case is a no-op, which results in still retrieving the excluded field from data store.
-        // But later, when serializing the response, the sparse fieldset is first populated with all fields,
-        // so then the exclusion will actually be applied and the excluded field is not returned to the client.
-
-        if (sparseFieldSet == null || !sparseFieldSet.Fields.Contains(fieldToExclude))
+        private static SparseFieldSetExpression? ExcludeField(SparseFieldSetExpression? sparseFieldSet, ResourceFieldAttribute fieldToExclude)
         {
-            return sparseFieldSet;
-        }
+            // Design tradeoff: When the sparse fieldset is empty, it means all fields will be selected.
+            // Adding an exclusion in that case is a no-op, which results in still retrieving the excluded field from data store.
+            // But later, when serializing the response, the sparse fieldset is first populated with all fields,
+            // so then the exclusion will actually be applied and the excluded field is not returned to the client.
 
-        IImmutableSet<ResourceFieldAttribute> newSparseFieldSet = sparseFieldSet.Fields.Remove(fieldToExclude);
-        return new SparseFieldSetExpression(newSparseFieldSet);
+            if (sparseFieldSet == null || !sparseFieldSet.Fields.Contains(fieldToExclude))
+            {
+                return sparseFieldSet;
+            }
+
+            IImmutableSet<ResourceFieldAttribute> newSparseFieldSet = sparseFieldSet.Fields.Remove(fieldToExclude);
+            return new SparseFieldSetExpression(newSparseFieldSet);
+        }
     }
 }

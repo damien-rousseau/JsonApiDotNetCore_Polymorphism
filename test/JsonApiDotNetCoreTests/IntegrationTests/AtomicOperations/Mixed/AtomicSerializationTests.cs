@@ -5,91 +5,91 @@ using Microsoft.Extensions.DependencyInjection;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations.Mixed;
-
-public sealed class AtomicSerializationTests : IClassFixture<IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext>>
+namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations.Mixed
 {
-    private readonly IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext> _testContext;
-    private readonly OperationsFakers _fakers = new();
-
-    public AtomicSerializationTests(IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext> testContext)
+    public sealed class AtomicSerializationTests : IClassFixture<IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext>>
     {
-        _testContext = testContext;
+        private readonly IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext> _testContext;
+        private readonly OperationsFakers _fakers = new();
 
-        testContext.UseController<OperationsController>();
-
-        // These routes need to be registered in ASP.NET for rendering links to resource/relationship endpoints.
-        testContext.UseController<TextLanguagesController>();
-
-        testContext.ConfigureServicesAfterStartup(services =>
+        public AtomicSerializationTests(IntegrationTestContext<TestableStartup<OperationsDbContext>, OperationsDbContext> testContext)
         {
-            services.AddResourceDefinition<ImplicitlyChangingTextLanguageDefinition>();
+            _testContext = testContext;
 
-            services.AddSingleton<ResourceDefinitionHitCounter>();
-        });
+            testContext.UseController<OperationsController>();
 
-        var options = (JsonApiOptions)testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
-        options.IncludeExceptionStackTraceInErrors = false;
-        options.IncludeJsonApiVersion = true;
-        options.AllowClientGeneratedIds = true;
-    }
+            // These routes need to be registered in ASP.NET for rendering links to resource/relationship endpoints.
+            testContext.UseController<TextLanguagesController>();
 
-    [Fact]
-    public async Task Hides_data_for_void_operation()
-    {
-        // Arrange
-        Performer existingPerformer = _fakers.Performer.Generate();
-
-        TextLanguage newLanguage = _fakers.TextLanguage.Generate();
-        newLanguage.Id = Guid.NewGuid();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Performers.Add(existingPerformer);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            atomic__operations = new object[]
+            testContext.ConfigureServicesAfterStartup(services =>
             {
-                new
+                services.AddResourceDefinition<ImplicitlyChangingTextLanguageDefinition>();
+
+                services.AddSingleton<ResourceDefinitionHitCounter>();
+            });
+
+            var options = (JsonApiOptions)testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
+            options.IncludeExceptionStackTraceInErrors = false;
+            options.IncludeJsonApiVersion = true;
+            options.AllowClientGeneratedIds = true;
+        }
+
+        [Fact]
+        public async Task Hides_data_for_void_operation()
+        {
+            // Arrange
+            Performer existingPerformer = _fakers.Performer.Generate();
+
+            TextLanguage newLanguage = _fakers.TextLanguage.Generate();
+            newLanguage.Id = Guid.NewGuid();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Performers.Add(existingPerformer);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                atomic__operations = new object[]
                 {
-                    op = "update",
-                    data = new
+                    new
                     {
-                        type = "performers",
-                        id = existingPerformer.StringId,
-                        attributes = new
+                        op = "update",
+                        data = new
                         {
+                            type = "performers",
+                            id = existingPerformer.StringId,
+                            attributes = new
+                            {
+                            }
                         }
-                    }
-                },
-                new
-                {
-                    op = "add",
-                    data = new
+                    },
+                    new
                     {
-                        type = "textLanguages",
-                        id = newLanguage.StringId,
-                        attributes = new
+                        op = "add",
+                        data = new
                         {
-                            isoCode = newLanguage.IsoCode
+                            type = "textLanguages",
+                            id = newLanguage.StringId,
+                            attributes = new
+                            {
+                                isoCode = newLanguage.IsoCode
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
 
-        const string route = "/operations";
+            const string route = "/operations";
 
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecutePostAtomicAsync<string>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecutePostAtomicAsync<string>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        responseDocument.Should().BeJson(@"{
+            responseDocument.Should().BeJson(@"{
   ""jsonapi"": {
     ""version"": ""1.1"",
     ""ext"": [
@@ -125,41 +125,41 @@ public sealed class AtomicSerializationTests : IClassFixture<IntegrationTestCont
     }
   ]
 }");
-    }
+        }
 
-    [Fact]
-    public async Task Includes_version_with_ext_on_error_in_operations_endpoint()
-    {
-        // Arrange
-        string musicTrackId = Unknown.StringId.For<MusicTrack, Guid>();
-
-        var requestBody = new
+        [Fact]
+        public async Task Includes_version_with_ext_on_error_in_operations_endpoint()
         {
-            atomic__operations = new[]
+            // Arrange
+            string musicTrackId = Unknown.StringId.For<MusicTrack, Guid>();
+
+            var requestBody = new
             {
-                new
+                atomic__operations = new[]
                 {
-                    op = "remove",
-                    @ref = new
+                    new
                     {
-                        type = "musicTracks",
-                        id = musicTrackId
+                        op = "remove",
+                        @ref = new
+                        {
+                            type = "musicTracks",
+                            id = musicTrackId
+                        }
                     }
                 }
-            }
-        };
+            };
 
-        const string route = "/operations";
+            const string route = "/operations";
 
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecutePostAtomicAsync<string>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecutePostAtomicAsync<string>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        string errorId = JsonApiStringConverter.ExtractErrorId(responseDocument);
+            string errorId = JsonApiStringConverter.ExtractErrorId(responseDocument);
 
-        responseDocument.Should().BeJson(@"{
+            responseDocument.Should().BeJson(@"{
   ""jsonapi"": {
     ""version"": ""1.1"",
     ""ext"": [
@@ -181,5 +181,6 @@ public sealed class AtomicSerializationTests : IClassFixture<IntegrationTestCont
     }
   ]
 }");
+        }
     }
 }

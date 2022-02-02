@@ -3,26 +3,27 @@ using JsonApiPolymorphismExample.Managers.Contracts;
 using JsonApiPolymorphismExample.Services.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace JsonApiPolymorphismExample.Controllers.Base;
-
-public abstract class JsonApiControllerBase<T> : CoreJsonApiController
+namespace JsonApiPolymorphismExample.Controllers.Base
 {
-    protected readonly IConstraintsManager ConstraintsManager;
-    protected readonly IService<T> Service;
-
-    protected JsonApiControllerBase(IConstraintsManager constraintsManager, IService<T> service)
+    public abstract class JsonApiControllerBase<T> : CoreJsonApiController
     {
-        ConstraintsManager = constraintsManager ?? throw new NotImplementedException(nameof(constraintsManager));
-        Service = service ?? throw new NotImplementedException(nameof(service));
-    }
+        protected readonly IConstraintsManager ConstraintsManager;
+        protected readonly IService<T> Service;
 
-    [HttpGet]
-    [HttpHead]
-    public virtual async Task<IActionResult> GetAsync(CancellationToken cancellationToken)
-    {
-        var constraints = ConstraintsManager.Build();
+        protected JsonApiControllerBase(IConstraintsManager constraintsManager, IService<T> service)
+        {
+            ConstraintsManager = constraintsManager ?? throw new NotImplementedException(nameof(constraintsManager));
+            Service = service ?? throw new NotImplementedException(nameof(service));
+        }
 
-        var result = await Service.GetAsync(cancellationToken);
-        return Ok(result);
+        [HttpGet]
+        [HttpHead]
+        public virtual async Task<IActionResult> GetAsync(CancellationToken cancellationToken)
+        {
+            var constraints = ConstraintsManager.Build();
+
+            var result = await Service.GetAsync(cancellationToken);
+            return Ok(result);
+        }
     }
 }

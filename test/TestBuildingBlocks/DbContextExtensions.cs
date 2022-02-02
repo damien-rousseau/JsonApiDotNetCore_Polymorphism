@@ -2,58 +2,59 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Npgsql;
 
-namespace TestBuildingBlocks;
-
-public static class DbContextExtensions
+namespace TestBuildingBlocks
 {
-    public static void AddInRange(this DbContext dbContext, params object[] entities)
+    public static class DbContextExtensions
     {
-        dbContext.AddRange(entities);
-    }
-
-    public static async Task ClearTableAsync<TEntity>(this DbContext dbContext)
-        where TEntity : class
-    {
-        await ClearTablesAsync(dbContext, typeof(TEntity));
-    }
-
-    public static async Task ClearTablesAsync<TEntity1, TEntity2>(this DbContext dbContext)
-        where TEntity1 : class
-        where TEntity2 : class
-    {
-        await ClearTablesAsync(dbContext, typeof(TEntity1), typeof(TEntity2));
-    }
-
-    public static async Task ClearTablesAsync<TEntity1, TEntity2, TEntity3>(this DbContext dbContext)
-        where TEntity1 : class
-        where TEntity2 : class
-        where TEntity3 : class
-    {
-        await ClearTablesAsync(dbContext, typeof(TEntity1), typeof(TEntity2), typeof(TEntity3));
-    }
-
-    private static async Task ClearTablesAsync(this DbContext dbContext, params Type[] models)
-    {
-        foreach (Type model in models)
+        public static void AddInRange(this DbContext dbContext, params object[] entities)
         {
-            IEntityType? entityType = dbContext.Model.FindEntityType(model);
+            dbContext.AddRange(entities);
+        }
 
-            if (entityType == null)
-            {
-                throw new InvalidOperationException($"Table for '{model.Name}' not found.");
-            }
+        public static async Task ClearTableAsync<TEntity>(this DbContext dbContext)
+            where TEntity : class
+        {
+            await ClearTablesAsync(dbContext, typeof(TEntity));
+        }
 
-            string tableName = entityType.GetTableName()!;
+        public static async Task ClearTablesAsync<TEntity1, TEntity2>(this DbContext dbContext)
+            where TEntity1 : class
+            where TEntity2 : class
+        {
+            await ClearTablesAsync(dbContext, typeof(TEntity1), typeof(TEntity2));
+        }
 
-            // PERF: We first try to clear the table, which is fast and usually succeeds, unless foreign key constraints are violated.
-            // In that case, we recursively delete all related data, which is slow.
-            try
+        public static async Task ClearTablesAsync<TEntity1, TEntity2, TEntity3>(this DbContext dbContext)
+            where TEntity1 : class
+            where TEntity2 : class
+            where TEntity3 : class
+        {
+            await ClearTablesAsync(dbContext, typeof(TEntity1), typeof(TEntity2), typeof(TEntity3));
+        }
+
+        private static async Task ClearTablesAsync(this DbContext dbContext, params Type[] models)
+        {
+            foreach (Type model in models)
             {
-                await dbContext.Database.ExecuteSqlRawAsync($"delete from \"{tableName}\"");
-            }
-            catch (PostgresException)
-            {
-                await dbContext.Database.ExecuteSqlRawAsync($"truncate table \"{tableName}\" cascade");
+                IEntityType? entityType = dbContext.Model.FindEntityType(model);
+
+                if (entityType == null)
+                {
+                    throw new InvalidOperationException($"Table for '{model.Name}' not found.");
+                }
+
+                string tableName = entityType.GetTableName()!;
+
+                // PERF: We first try to clear the table, which is fast and usually succeeds, unless foreign key constraints are violated.
+                // In that case, we recursively delete all related data, which is slow.
+                try
+                {
+                    await dbContext.Database.ExecuteSqlRawAsync($"delete from \"{tableName}\"");
+                }
+                catch (PostgresException)
+                {
+                    await dbContext.Database.ExecuteSqlRawAsync($"truncate table \"{tableName}\" cascade");
+                }
             }
         }
     }

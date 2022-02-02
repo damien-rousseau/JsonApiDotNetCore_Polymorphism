@@ -3,32 +3,33 @@ using System.Text.Json;
 using Humanizer;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCore.Configuration;
-
-internal sealed class ResourceNameFormatter
+namespace JsonApiDotNetCore.Configuration
 {
-    private readonly JsonNamingPolicy? _namingPolicy;
-
-    public ResourceNameFormatter(JsonNamingPolicy? namingPolicy)
+    internal sealed class ResourceNameFormatter
     {
-        _namingPolicy = namingPolicy;
-    }
+        private readonly JsonNamingPolicy? _namingPolicy;
 
-    /// <summary>
-    /// Gets the publicly exposed resource name by applying the configured naming convention on the pluralized CLR type name.
-    /// </summary>
-    public string FormatResourceName(Type resourceClrType)
-    {
-        ArgumentGuard.NotNull(resourceClrType, nameof(resourceClrType));
-
-        var resourceAttribute = resourceClrType.GetCustomAttribute<ResourceAttribute>(true);
-
-        if (resourceAttribute != null && !string.IsNullOrWhiteSpace(resourceAttribute.PublicName))
+        public ResourceNameFormatter(JsonNamingPolicy? namingPolicy)
         {
-            return resourceAttribute.PublicName;
+            _namingPolicy = namingPolicy;
         }
 
-        string publicName = resourceClrType.Name.Pluralize();
-        return _namingPolicy != null ? _namingPolicy.ConvertName(publicName) : publicName;
+        /// <summary>
+        /// Gets the publicly exposed resource name by applying the configured naming convention on the pluralized CLR type name.
+        /// </summary>
+        public string FormatResourceName(Type resourceClrType)
+        {
+            ArgumentGuard.NotNull(resourceClrType, nameof(resourceClrType));
+
+            var resourceAttribute = resourceClrType.GetCustomAttribute<ResourceAttribute>(true);
+
+            if (resourceAttribute != null && !string.IsNullOrWhiteSpace(resourceAttribute.PublicName))
+            {
+                return resourceAttribute.PublicName;
+            }
+
+            string publicName = resourceClrType.Name.Pluralize();
+            return _namingPolicy != null ? _namingPolicy.ConvertName(publicName) : publicName;
+        }
     }
 }

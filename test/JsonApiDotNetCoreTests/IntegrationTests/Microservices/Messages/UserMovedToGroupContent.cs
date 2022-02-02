@@ -1,20 +1,21 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public sealed class UserMovedToGroupContent : IMessageContent
+namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages
 {
-    public int FormatVersion => 1;
-
-    public Guid UserId { get; }
-    public Guid BeforeGroupId { get; }
-    public Guid AfterGroupId { get; }
-
-    public UserMovedToGroupContent(Guid userId, Guid beforeGroupId, Guid afterGroupId)
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public sealed class UserMovedToGroupContent : IMessageContent
     {
-        UserId = userId;
-        BeforeGroupId = beforeGroupId;
-        AfterGroupId = afterGroupId;
+        public int FormatVersion => 1;
+
+        public Guid UserId { get; }
+        public Guid BeforeGroupId { get; }
+        public Guid AfterGroupId { get; }
+
+        public UserMovedToGroupContent(Guid userId, Guid beforeGroupId, Guid afterGroupId)
+        {
+            UserId = userId;
+            BeforeGroupId = beforeGroupId;
+            AfterGroupId = afterGroupId;
+        }
     }
 }

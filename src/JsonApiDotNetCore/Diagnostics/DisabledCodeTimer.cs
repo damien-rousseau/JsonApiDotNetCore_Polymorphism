@@ -1,27 +1,28 @@
-namespace JsonApiDotNetCore.Diagnostics;
-
-/// <summary>
-/// Doesn't record anything. Intended for Release builds and to not break existing tests.
-/// </summary>
-internal sealed class DisabledCodeTimer : ICodeTimer
+namespace JsonApiDotNetCore.Diagnostics
 {
-    public static readonly DisabledCodeTimer Instance = new();
-
-    private DisabledCodeTimer()
+    /// <summary>
+    /// Doesn't record anything. Intended for Release builds and to not break existing tests.
+    /// </summary>
+    internal sealed class DisabledCodeTimer : ICodeTimer
     {
-    }
+        public static readonly DisabledCodeTimer Instance = new();
 
-    public IDisposable Measure(string name, bool excludeInRelativeCost = false)
-    {
-        return this;
-    }
+        private DisabledCodeTimer()
+        {
+        }
 
-    public string GetResults()
-    {
-        return string.Empty;
-    }
+        public IDisposable Measure(string name, bool excludeInRelativeCost = false)
+        {
+            return this;
+        }
 
-    public void Dispose()
-    {
+        public string GetResults()
+        {
+            return string.Empty;
+        }
+
+        public void Dispose()
+        {
+        }
     }
 }

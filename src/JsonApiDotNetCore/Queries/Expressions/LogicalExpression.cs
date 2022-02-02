@@ -3,88 +3,89 @@ using System.Text;
 using Humanizer;
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Expressions;
-
-/// <summary>
-/// Represents a logical filter function, resulting from text such as: and(equals(title,'Work'),has(articles))
-/// </summary>
-[PublicAPI]
-public class LogicalExpression : FilterExpression
+namespace JsonApiDotNetCore.Queries.Expressions
 {
-    public LogicalOperator Operator { get; }
-    public IImmutableList<FilterExpression> Terms { get; }
-
-    public LogicalExpression(LogicalOperator @operator, params FilterExpression[] terms)
-        : this(@operator, terms.ToImmutableArray())
+    /// <summary>
+    /// Represents a logical filter function, resulting from text such as: and(equals(title,'Work'),has(articles))
+    /// </summary>
+    [PublicAPI]
+    public class LogicalExpression : FilterExpression
     {
-    }
+        public LogicalOperator Operator { get; }
+        public IImmutableList<FilterExpression> Terms { get; }
 
-    public LogicalExpression(LogicalOperator @operator, IImmutableList<FilterExpression> terms)
-    {
-        ArgumentGuard.NotNull(terms, nameof(terms));
-
-        if (terms.Count < 2)
+        public LogicalExpression(LogicalOperator @operator, params FilterExpression[] terms)
+            : this(@operator, terms.ToImmutableArray())
         {
-            throw new ArgumentException("At least two terms are required.", nameof(terms));
         }
 
-        Operator = @operator;
-        Terms = terms;
-    }
-
-    public static FilterExpression? Compose(LogicalOperator @operator, params FilterExpression?[] filters)
-    {
-        ArgumentGuard.NotNull(filters, nameof(filters));
-
-        ImmutableArray<FilterExpression> terms = filters.WhereNotNull().ToImmutableArray();
-
-        return terms.Length > 1 ? new LogicalExpression(@operator, terms) : terms.FirstOrDefault();
-    }
-
-    public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
-    {
-        return visitor.VisitLogical(this, argument);
-    }
-
-    public override string ToString()
-    {
-        var builder = new StringBuilder();
-
-        builder.Append(Operator.ToString().Camelize());
-        builder.Append('(');
-        builder.Append(string.Join(",", Terms.Select(term => term.ToString())));
-        builder.Append(')');
-
-        return builder.ToString();
-    }
-
-    public override bool Equals(object? obj)
-    {
-        if (ReferenceEquals(this, obj))
+        public LogicalExpression(LogicalOperator @operator, IImmutableList<FilterExpression> terms)
         {
-            return true;
+            ArgumentGuard.NotNull(terms, nameof(terms));
+
+            if (terms.Count < 2)
+            {
+                throw new ArgumentException("At least two terms are required.", nameof(terms));
+            }
+
+            Operator = @operator;
+            Terms = terms;
         }
 
-        if (obj is null || GetType() != obj.GetType())
+        public static FilterExpression? Compose(LogicalOperator @operator, params FilterExpression?[] filters)
         {
-            return false;
+            ArgumentGuard.NotNull(filters, nameof(filters));
+
+            ImmutableArray<FilterExpression> terms = filters.WhereNotNull().ToImmutableArray();
+
+            return terms.Length > 1 ? new LogicalExpression(@operator, terms) : terms.FirstOrDefault();
         }
 
-        var other = (LogicalExpression)obj;
-
-        return Operator == other.Operator && Terms.SequenceEqual(other.Terms);
-    }
-
-    public override int GetHashCode()
-    {
-        var hashCode = new HashCode();
-        hashCode.Add(Operator);
-
-        foreach (QueryExpression term in Terms)
+        public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
         {
-            hashCode.Add(term);
+            return visitor.VisitLogical(this, argument);
         }
 
-        return hashCode.ToHashCode();
+        public override string ToString()
+        {
+            var builder = new StringBuilder();
+
+            builder.Append(Operator.ToString().Camelize());
+            builder.Append('(');
+            builder.Append(string.Join(",", Terms.Select(term => term.ToString())));
+            builder.Append(')');
+
+            return builder.ToString();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            if (obj is null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            var other = (LogicalExpression)obj;
+
+            return Operator == other.Operator && Terms.SequenceEqual(other.Terms);
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = new HashCode();
+            hashCode.Add(Operator);
+
+            foreach (QueryExpression term in Terms)
+            {
+                hashCode.Add(term);
+            }
+
+            return hashCode.ToHashCode();
+        }
     }
 }

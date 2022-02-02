@@ -5,14 +5,15 @@ using JsonApiDotNetCore.Services;
 using Microsoft.Extensions.Logging;
 using SourceGeneratorDebugger.Models;
 
-namespace SourceGeneratorDebugger.Controllers;
-
-[PublicAPI]
-public sealed class CustomersController : JsonApiController<Customer, long>
+namespace SourceGeneratorDebugger.Controllers
 {
-    public CustomersController(IJsonApiOptions options, IResourceGraph resourceGraph, ILoggerFactory loggerFactory,
-        IResourceService<Customer, long> resourceService)
-        : base(options, resourceGraph, loggerFactory, resourceService)
+    [PublicAPI]
+    public sealed class CustomersController : JsonApiController<Customer, long>
     {
+        public CustomersController(IJsonApiOptions options, IResourceGraph resourceGraph, ILoggerFactory loggerFactory,
+            IResourceService<Customer, long> resourceService)
+            : base(options, resourceGraph, loggerFactory, resourceService)
+        {
+        }
     }
 }

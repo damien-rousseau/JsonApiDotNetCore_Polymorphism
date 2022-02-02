@@ -4,52 +4,53 @@ using JsonApiDotNetCore.Queries.Expressions;
 using JsonApiDotNetCore.Queries.Internal.Parsing;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCore.QueryStrings.Internal;
-
-public abstract class QueryStringParameterReader
+namespace JsonApiDotNetCore.QueryStrings.Internal
 {
-    private readonly IJsonApiRequest _request;
-    private readonly IResourceGraph _resourceGraph;
-    private readonly bool _isCollectionRequest;
-
-    // There are currently no query string readers that work with operations, so non-nullable for convenience.
-    protected ResourceType RequestResourceType => (_request.SecondaryResourceType ?? _request.PrimaryResourceType)!;
-
-    protected bool IsAtomicOperationsRequest { get; }
-
-    protected QueryStringParameterReader(IJsonApiRequest request, IResourceGraph resourceGraph)
+    public abstract class QueryStringParameterReader
     {
-        ArgumentGuard.NotNull(request, nameof(request));
-        ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
+        private readonly IJsonApiRequest _request;
+        private readonly IResourceGraph _resourceGraph;
+        private readonly bool _isCollectionRequest;
 
-        _request = request;
-        _resourceGraph = resourceGraph;
-        _isCollectionRequest = request.IsCollection;
-        IsAtomicOperationsRequest = request.Kind == EndpointKind.AtomicOperations;
-    }
+        // There are currently no query string readers that work with operations, so non-nullable for convenience.
+        protected ResourceType RequestResourceType => (_request.SecondaryResourceType ?? _request.PrimaryResourceType)!;
 
-    protected ResourceType GetResourceTypeForScope(ResourceFieldChainExpression? scope)
-    {
-        if (scope == null)
+        protected bool IsAtomicOperationsRequest { get; }
+
+        protected QueryStringParameterReader(IJsonApiRequest request, IResourceGraph resourceGraph)
         {
-            return RequestResourceType;
+            ArgumentGuard.NotNull(request, nameof(request));
+            ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
+
+            _request = request;
+            _resourceGraph = resourceGraph;
+            _isCollectionRequest = request.IsCollection;
+            IsAtomicOperationsRequest = request.Kind == EndpointKind.AtomicOperations;
         }
 
-        ResourceFieldAttribute lastField = scope.Fields[^1];
-
-        if (lastField is RelationshipAttribute relationship)
+        protected ResourceType GetResourceTypeForScope(ResourceFieldChainExpression? scope)
         {
-            return relationship.RightType;
+            if (scope == null)
+            {
+                return RequestResourceType;
+            }
+
+            ResourceFieldAttribute lastField = scope.Fields[^1];
+
+            if (lastField is RelationshipAttribute relationship)
+            {
+                return relationship.RightType;
+            }
+
+            return _resourceGraph.GetResourceType(lastField.Property.PropertyType);
         }
 
-        return _resourceGraph.GetResourceType(lastField.Property.PropertyType);
-    }
-
-    protected void AssertIsCollectionRequest()
-    {
-        if (!_isCollectionRequest)
+        protected void AssertIsCollectionRequest()
         {
-            throw new QueryParseException("This query string parameter can only be used on a collection of resources (not on a single resource).");
+            if (!_isCollectionRequest)
+            {
+                throw new QueryParseException("This query string parameter can only be used on a collection of resources (not on a single resource).");
+            }
         }
     }
 }

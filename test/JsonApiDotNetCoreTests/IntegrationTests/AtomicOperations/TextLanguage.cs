@@ -2,18 +2,19 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-[Resource(ControllerNamespace = "JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations")]
-public sealed class TextLanguage : Identifiable<Guid>
+namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations
 {
-    [Attr]
-    public string? IsoCode { get; set; }
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    [Resource(ControllerNamespace = "JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations")]
+    public sealed class TextLanguage : Identifiable<Guid>
+    {
+        [Attr]
+        public string? IsoCode { get; set; }
 
-    [Attr(Capabilities = AttrCapabilities.None)]
-    public bool IsRightToLeft { get; set; }
+        [Attr(Capabilities = AttrCapabilities.None)]
+        public bool IsRightToLeft { get; set; }
 
-    [HasMany]
-    public ICollection<Lyric> Lyrics { get; set; } = new List<Lyric>();
+        [HasMany]
+        public ICollection<Lyric> Lyrics { get; set; } = new List<Lyric>();
+    }
 }

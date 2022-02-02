@@ -2,95 +2,96 @@ using System.Collections.Concurrent;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 
-namespace TestBuildingBlocks;
-
-[PublicAPI]
-public sealed class FakeLoggerFactory : ILoggerFactory, ILoggerProvider
+namespace TestBuildingBlocks
 {
-    public FakeLogger Logger { get; }
-
-    public FakeLoggerFactory(LogLevel minimumLevel)
+    [PublicAPI]
+    public sealed class FakeLoggerFactory : ILoggerFactory, ILoggerProvider
     {
-        Logger = new FakeLogger(minimumLevel);
-    }
+        public FakeLogger Logger { get; }
 
-    public ILogger CreateLogger(string categoryName)
-    {
-        return Logger;
-    }
-
-    public void AddProvider(ILoggerProvider provider)
-    {
-    }
-
-    public void Dispose()
-    {
-    }
-
-    public sealed class FakeLogger : ILogger
-    {
-        private readonly LogLevel _minimumLevel;
-        private readonly ConcurrentBag<FakeLogMessage> _messages = new();
-
-        public IReadOnlyCollection<FakeLogMessage> Messages => _messages;
-
-        public FakeLogger(LogLevel minimumLevel)
+        public FakeLoggerFactory(LogLevel minimumLevel)
         {
-            _minimumLevel = minimumLevel;
+            Logger = new FakeLogger(minimumLevel);
         }
 
-        public bool IsEnabled(LogLevel logLevel)
+        public ILogger CreateLogger(string categoryName)
         {
-            return _minimumLevel != LogLevel.None && logLevel >= _minimumLevel;
+            return Logger;
         }
 
-        public void Clear()
+        public void AddProvider(ILoggerProvider provider)
         {
-            _messages.Clear();
         }
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        public void Dispose()
         {
-            if (IsEnabled(logLevel))
+        }
+
+        public sealed class FakeLogger : ILogger
+        {
+            private readonly LogLevel _minimumLevel;
+            private readonly ConcurrentBag<FakeLogMessage> _messages = new();
+
+            public IReadOnlyCollection<FakeLogMessage> Messages => _messages;
+
+            public FakeLogger(LogLevel minimumLevel)
             {
-                string message = formatter(state, exception);
-                _messages.Add(new FakeLogMessage(logLevel, message));
+                _minimumLevel = minimumLevel;
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return _minimumLevel != LogLevel.None && logLevel >= _minimumLevel;
+            }
+
+            public void Clear()
+            {
+                _messages.Clear();
+            }
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (IsEnabled(logLevel))
+                {
+                    string message = formatter(state, exception);
+                    _messages.Add(new FakeLogMessage(logLevel, message));
+                }
+            }
+
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                return NullScope.Instance;
+            }
+
+            private sealed class NullScope : IDisposable
+            {
+                public static readonly NullScope Instance = new();
+
+                private NullScope()
+                {
+                }
+
+                public void Dispose()
+                {
+                }
             }
         }
 
-        public IDisposable BeginScope<TState>(TState state)
+        public sealed class FakeLogMessage
         {
-            return NullScope.Instance;
-        }
+            public LogLevel LogLevel { get; }
+            public string Text { get; }
 
-        private sealed class NullScope : IDisposable
-        {
-            public static readonly NullScope Instance = new();
-
-            private NullScope()
+            public FakeLogMessage(LogLevel logLevel, string text)
             {
+                LogLevel = logLevel;
+                Text = text;
             }
 
-            public void Dispose()
+            public override string ToString()
             {
+                return $"[{LogLevel.ToString().ToUpperInvariant()}] {Text}";
             }
-        }
-    }
-
-    public sealed class FakeLogMessage
-    {
-        public LogLevel LogLevel { get; }
-        public string Text { get; }
-
-        public FakeLogMessage(LogLevel logLevel, string text)
-        {
-            LogLevel = logLevel;
-            Text = text;
-        }
-
-        public override string ToString()
-        {
-            return $"[{LogLevel.ToString().ToUpperInvariant()}] {Text}";
         }
     }
 }

@@ -1,72 +1,73 @@
 using System.Text;
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Serialization.Request.Adapters;
-
-/// <summary>
-/// Tracks the location within an object tree when validating and converting a request body.
-/// </summary>
-[PublicAPI]
-public sealed class RequestAdapterPosition
+namespace JsonApiDotNetCore.Serialization.Request.Adapters
 {
-    private readonly Stack<string> _stack = new();
-    private readonly IDisposable _disposable;
-
-    public RequestAdapterPosition()
+    /// <summary>
+    /// Tracks the location within an object tree when validating and converting a request body.
+    /// </summary>
+    [PublicAPI]
+    public sealed class RequestAdapterPosition
     {
-        _disposable = new PopStackOnDispose(this);
-    }
+        private readonly Stack<string> _stack = new();
+        private readonly IDisposable _disposable;
 
-    public IDisposable PushElement(string name)
-    {
-        ArgumentGuard.NotNullNorEmpty(name, nameof(name));
-
-        _stack.Push($"/{name}");
-        return _disposable;
-    }
-
-    public IDisposable PushArrayIndex(int index)
-    {
-        _stack.Push($"[{index}]");
-        return _disposable;
-    }
-
-    public string? ToSourcePointer()
-    {
-        if (!_stack.Any())
+        public RequestAdapterPosition()
         {
-            return null;
+            _disposable = new PopStackOnDispose(this);
         }
 
-        var builder = new StringBuilder();
-        var clone = new Stack<string>(_stack);
-
-        while (clone.Any())
+        public IDisposable PushElement(string name)
         {
-            string element = clone.Pop();
-            builder.Append(element);
+            ArgumentGuard.NotNullNorEmpty(name, nameof(name));
+
+            _stack.Push($"/{name}");
+            return _disposable;
         }
 
-        return builder.ToString();
-    }
-
-    public override string ToString()
-    {
-        return ToSourcePointer() ?? string.Empty;
-    }
-
-    private sealed class PopStackOnDispose : IDisposable
-    {
-        private readonly RequestAdapterPosition _owner;
-
-        public PopStackOnDispose(RequestAdapterPosition owner)
+        public IDisposable PushArrayIndex(int index)
         {
-            _owner = owner;
+            _stack.Push($"[{index}]");
+            return _disposable;
         }
 
-        public void Dispose()
+        public string? ToSourcePointer()
         {
-            _owner._stack.Pop();
+            if (!_stack.Any())
+            {
+                return null;
+            }
+
+            var builder = new StringBuilder();
+            var clone = new Stack<string>(_stack);
+
+            while (clone.Any())
+            {
+                string element = clone.Pop();
+                builder.Append(element);
+            }
+
+            return builder.ToString();
+        }
+
+        public override string ToString()
+        {
+            return ToSourcePointer() ?? string.Empty;
+        }
+
+        private sealed class PopStackOnDispose : IDisposable
+        {
+            private readonly RequestAdapterPosition _owner;
+
+            public PopStackOnDispose(RequestAdapterPosition owner)
+            {
+                _owner = owner;
+            }
+
+            public void Dispose()
+            {
+                _owner._stack.Pop();
+            }
         }
     }
 }

@@ -4,59 +4,60 @@ using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Queries.Expressions;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Internal.Parsing;
-
-[PublicAPI]
-public class SparseFieldSetParser : QueryExpressionParser
+namespace JsonApiDotNetCore.Queries.Internal.Parsing
 {
-    private readonly Action<ResourceFieldAttribute, ResourceType, string>? _validateSingleFieldCallback;
-    private ResourceType? _resourceType;
-
-    public SparseFieldSetParser(Action<ResourceFieldAttribute, ResourceType, string>? validateSingleFieldCallback = null)
+    [PublicAPI]
+    public class SparseFieldSetParser : QueryExpressionParser
     {
-        _validateSingleFieldCallback = validateSingleFieldCallback;
-    }
+        private readonly Action<ResourceFieldAttribute, ResourceType, string>? _validateSingleFieldCallback;
+        private ResourceType? _resourceType;
 
-    public SparseFieldSetExpression? Parse(string source, ResourceType resourceType)
-    {
-        ArgumentGuard.NotNull(resourceType, nameof(resourceType));
-
-        _resourceType = resourceType;
-
-        Tokenize(source);
-
-        SparseFieldSetExpression? expression = ParseSparseFieldSet();
-
-        AssertTokenStackIsEmpty();
-
-        return expression;
-    }
-
-    protected SparseFieldSetExpression? ParseSparseFieldSet()
-    {
-        ImmutableHashSet<ResourceFieldAttribute>.Builder fieldSetBuilder = ImmutableHashSet.CreateBuilder<ResourceFieldAttribute>();
-
-        while (TokenStack.Any())
+        public SparseFieldSetParser(Action<ResourceFieldAttribute, ResourceType, string>? validateSingleFieldCallback = null)
         {
-            if (fieldSetBuilder.Count > 0)
-            {
-                EatSingleCharacterToken(TokenKind.Comma);
-            }
-
-            ResourceFieldChainExpression nextChain = ParseFieldChain(FieldChainRequirements.EndsInAttribute, "Field name expected.");
-            ResourceFieldAttribute nextField = nextChain.Fields.Single();
-            fieldSetBuilder.Add(nextField);
+            _validateSingleFieldCallback = validateSingleFieldCallback;
         }
 
-        return fieldSetBuilder.Any() ? new SparseFieldSetExpression(fieldSetBuilder.ToImmutable()) : null;
-    }
+        public SparseFieldSetExpression? Parse(string source, ResourceType resourceType)
+        {
+            ArgumentGuard.NotNull(resourceType, nameof(resourceType));
 
-    protected override IImmutableList<ResourceFieldAttribute> OnResolveFieldChain(string path, FieldChainRequirements chainRequirements)
-    {
-        ResourceFieldAttribute field = ChainResolver.GetField(path, _resourceType!, path);
+            _resourceType = resourceType;
 
-        _validateSingleFieldCallback?.Invoke(field, _resourceType!, path);
+            Tokenize(source);
 
-        return ImmutableArray.Create(field);
+            SparseFieldSetExpression? expression = ParseSparseFieldSet();
+
+            AssertTokenStackIsEmpty();
+
+            return expression;
+        }
+
+        protected SparseFieldSetExpression? ParseSparseFieldSet()
+        {
+            ImmutableHashSet<ResourceFieldAttribute>.Builder fieldSetBuilder = ImmutableHashSet.CreateBuilder<ResourceFieldAttribute>();
+
+            while (TokenStack.Any())
+            {
+                if (fieldSetBuilder.Count > 0)
+                {
+                    EatSingleCharacterToken(TokenKind.Comma);
+                }
+
+                ResourceFieldChainExpression nextChain = ParseFieldChain(FieldChainRequirements.EndsInAttribute, "Field name expected.");
+                ResourceFieldAttribute nextField = nextChain.Fields.Single();
+                fieldSetBuilder.Add(nextField);
+            }
+
+            return fieldSetBuilder.Any() ? new SparseFieldSetExpression(fieldSetBuilder.ToImmutable()) : null;
+        }
+
+        protected override IImmutableList<ResourceFieldAttribute> OnResolveFieldChain(string path, FieldChainRequirements chainRequirements)
+        {
+            ResourceFieldAttribute field = ChainResolver.GetField(path, _resourceType!, path);
+
+            _validateSingleFieldCallback?.Invoke(field, _resourceType!, path);
+
+            return ImmutableArray.Create(field);
+        }
     }
 }

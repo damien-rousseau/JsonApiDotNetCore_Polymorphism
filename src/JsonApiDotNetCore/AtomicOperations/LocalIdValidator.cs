@@ -5,99 +5,100 @@ using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Serialization.Objects;
 
-namespace JsonApiDotNetCore.AtomicOperations;
-
-/// <summary>
-/// Validates declaration, assignment and reference of local IDs within a list of operations.
-/// </summary>
-[PublicAPI]
-public sealed class LocalIdValidator
+namespace JsonApiDotNetCore.AtomicOperations
 {
-    private readonly ILocalIdTracker _localIdTracker;
-    private readonly IResourceGraph _resourceGraph;
-
-    public LocalIdValidator(ILocalIdTracker localIdTracker, IResourceGraph resourceGraph)
+    /// <summary>
+    /// Validates declaration, assignment and reference of local IDs within a list of operations.
+    /// </summary>
+    [PublicAPI]
+    public sealed class LocalIdValidator
     {
-        ArgumentGuard.NotNull(localIdTracker, nameof(localIdTracker));
-        ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
+        private readonly ILocalIdTracker _localIdTracker;
+        private readonly IResourceGraph _resourceGraph;
 
-        _localIdTracker = localIdTracker;
-        _resourceGraph = resourceGraph;
-    }
-
-    public void Validate(IEnumerable<OperationContainer> operations)
-    {
-        ArgumentGuard.NotNull(operations, nameof(operations));
-
-        _localIdTracker.Reset();
-
-        int operationIndex = 0;
-
-        try
+        public LocalIdValidator(ILocalIdTracker localIdTracker, IResourceGraph resourceGraph)
         {
-            foreach (OperationContainer operation in operations)
-            {
-                ValidateOperation(operation);
+            ArgumentGuard.NotNull(localIdTracker, nameof(localIdTracker));
+            ArgumentGuard.NotNull(resourceGraph, nameof(resourceGraph));
 
-                operationIndex++;
+            _localIdTracker = localIdTracker;
+            _resourceGraph = resourceGraph;
+        }
+
+        public void Validate(IEnumerable<OperationContainer> operations)
+        {
+            ArgumentGuard.NotNull(operations, nameof(operations));
+
+            _localIdTracker.Reset();
+
+            int operationIndex = 0;
+
+            try
+            {
+                foreach (OperationContainer operation in operations)
+                {
+                    ValidateOperation(operation);
+
+                    operationIndex++;
+                }
+            }
+            catch (JsonApiException exception)
+            {
+                foreach (ErrorObject error in exception.Errors)
+                {
+                    error.Source ??= new ErrorSource();
+                    error.Source.Pointer = $"/atomic:operations[{operationIndex}]{error.Source.Pointer}";
+                }
+
+                throw;
             }
         }
-        catch (JsonApiException exception)
+
+        private void ValidateOperation(OperationContainer operation)
         {
-            foreach (ErrorObject error in exception.Errors)
+            if (operation.Request.WriteOperation == WriteOperationKind.CreateResource)
             {
-                error.Source ??= new ErrorSource();
-                error.Source.Pointer = $"/atomic:operations[{operationIndex}]{error.Source.Pointer}";
+                DeclareLocalId(operation.Resource, operation.Request.PrimaryResourceType!);
+            }
+            else
+            {
+                AssertLocalIdIsAssigned(operation.Resource);
             }
 
-            throw;
-        }
-    }
+            foreach (IIdentifiable secondaryResource in operation.GetSecondaryResources())
+            {
+                AssertLocalIdIsAssigned(secondaryResource);
+            }
 
-    private void ValidateOperation(OperationContainer operation)
-    {
-        if (operation.Request.WriteOperation == WriteOperationKind.CreateResource)
-        {
-            DeclareLocalId(operation.Resource, operation.Request.PrimaryResourceType!);
-        }
-        else
-        {
-            AssertLocalIdIsAssigned(operation.Resource);
+            if (operation.Request.WriteOperation == WriteOperationKind.CreateResource)
+            {
+                AssignLocalId(operation, operation.Request.PrimaryResourceType!);
+            }
         }
 
-        foreach (IIdentifiable secondaryResource in operation.GetSecondaryResources())
+        private void DeclareLocalId(IIdentifiable resource, ResourceType resourceType)
         {
-            AssertLocalIdIsAssigned(secondaryResource);
+            if (resource.LocalId != null)
+            {
+                _localIdTracker.Declare(resource.LocalId, resourceType);
+            }
         }
 
-        if (operation.Request.WriteOperation == WriteOperationKind.CreateResource)
+        private void AssignLocalId(OperationContainer operation, ResourceType resourceType)
         {
-            AssignLocalId(operation, operation.Request.PrimaryResourceType!);
+            if (operation.Resource.LocalId != null)
+            {
+                _localIdTracker.Assign(operation.Resource.LocalId, resourceType, "placeholder");
+            }
         }
-    }
 
-    private void DeclareLocalId(IIdentifiable resource, ResourceType resourceType)
-    {
-        if (resource.LocalId != null)
+        private void AssertLocalIdIsAssigned(IIdentifiable resource)
         {
-            _localIdTracker.Declare(resource.LocalId, resourceType);
-        }
-    }
-
-    private void AssignLocalId(OperationContainer operation, ResourceType resourceType)
-    {
-        if (operation.Resource.LocalId != null)
-        {
-            _localIdTracker.Assign(operation.Resource.LocalId, resourceType, "placeholder");
-        }
-    }
-
-    private void AssertLocalIdIsAssigned(IIdentifiable resource)
-    {
-        if (resource.LocalId != null)
-        {
-            ResourceType resourceType = _resourceGraph.GetResourceType(resource.GetType());
-            _localIdTracker.GetValue(resource.LocalId, resourceType);
+            if (resource.LocalId != null)
+            {
+                ResourceType resourceType = _resourceGraph.GetResourceType(resource.GetType());
+                _localIdTracker.GetValue(resource.LocalId, resourceType);
+            }
         }
     }
 }

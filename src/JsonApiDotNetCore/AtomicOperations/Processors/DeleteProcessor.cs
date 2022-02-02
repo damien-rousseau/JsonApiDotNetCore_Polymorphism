@@ -2,30 +2,31 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Services;
 
-namespace JsonApiDotNetCore.AtomicOperations.Processors;
-
-/// <inheritdoc />
-[PublicAPI]
-public class DeleteProcessor<TResource, TId> : IDeleteProcessor<TResource, TId>
-    where TResource : class, IIdentifiable<TId>
+namespace JsonApiDotNetCore.AtomicOperations.Processors
 {
-    private readonly IDeleteService<TResource, TId> _service;
-
-    public DeleteProcessor(IDeleteService<TResource, TId> service)
-    {
-        ArgumentGuard.NotNull(service, nameof(service));
-
-        _service = service;
-    }
-
     /// <inheritdoc />
-    public virtual async Task<OperationContainer?> ProcessAsync(OperationContainer operation, CancellationToken cancellationToken)
+    [PublicAPI]
+    public class DeleteProcessor<TResource, TId> : IDeleteProcessor<TResource, TId>
+        where TResource : class, IIdentifiable<TId>
     {
-        ArgumentGuard.NotNull(operation, nameof(operation));
+        private readonly IDeleteService<TResource, TId> _service;
 
-        var id = (TId)operation.Resource.GetTypedId();
-        await _service.DeleteAsync(id, cancellationToken);
+        public DeleteProcessor(IDeleteService<TResource, TId> service)
+        {
+            ArgumentGuard.NotNull(service, nameof(service));
 
-        return null;
+            _service = service;
+        }
+
+        /// <inheritdoc />
+        public virtual async Task<OperationContainer?> ProcessAsync(OperationContainer operation, CancellationToken cancellationToken)
+        {
+            ArgumentGuard.NotNull(operation, nameof(operation));
+
+            var id = (TId)operation.Resource.GetTypedId();
+            await _service.DeleteAsync(id, cancellationToken);
+
+            return null;
+        }
     }
 }

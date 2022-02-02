@@ -2,67 +2,68 @@ using System.Text;
 using JetBrains.Annotations;
 using JsonApiDotNetCore.Queries.Internal.Parsing;
 
-namespace JsonApiDotNetCore.Queries.Expressions;
-
-/// <summary>
-/// Represents the "has" filter function, resulting from text such as: has(articles) or has(articles,equals(isHidden,'false'))
-/// </summary>
-[PublicAPI]
-public class HasExpression : FilterExpression
+namespace JsonApiDotNetCore.Queries.Expressions
 {
-    public ResourceFieldChainExpression TargetCollection { get; }
-    public FilterExpression? Filter { get; }
-
-    public HasExpression(ResourceFieldChainExpression targetCollection, FilterExpression? filter)
+    /// <summary>
+    /// Represents the "has" filter function, resulting from text such as: has(articles) or has(articles,equals(isHidden,'false'))
+    /// </summary>
+    [PublicAPI]
+    public class HasExpression : FilterExpression
     {
-        ArgumentGuard.NotNull(targetCollection, nameof(targetCollection));
+        public ResourceFieldChainExpression TargetCollection { get; }
+        public FilterExpression? Filter { get; }
 
-        TargetCollection = targetCollection;
-        Filter = filter;
-    }
-
-    public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
-    {
-        return visitor.VisitHas(this, argument);
-    }
-
-    public override string ToString()
-    {
-        var builder = new StringBuilder();
-        builder.Append(Keywords.Has);
-        builder.Append('(');
-        builder.Append(TargetCollection);
-
-        if (Filter != null)
+        public HasExpression(ResourceFieldChainExpression targetCollection, FilterExpression? filter)
         {
-            builder.Append(',');
-            builder.Append(Filter);
+            ArgumentGuard.NotNull(targetCollection, nameof(targetCollection));
+
+            TargetCollection = targetCollection;
+            Filter = filter;
         }
 
-        builder.Append(')');
-
-        return builder.ToString();
-    }
-
-    public override bool Equals(object? obj)
-    {
-        if (ReferenceEquals(this, obj))
+        public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
         {
-            return true;
+            return visitor.VisitHas(this, argument);
         }
 
-        if (obj is null || GetType() != obj.GetType())
+        public override string ToString()
         {
-            return false;
+            var builder = new StringBuilder();
+            builder.Append(Keywords.Has);
+            builder.Append('(');
+            builder.Append(TargetCollection);
+
+            if (Filter != null)
+            {
+                builder.Append(',');
+                builder.Append(Filter);
+            }
+
+            builder.Append(')');
+
+            return builder.ToString();
         }
 
-        var other = (HasExpression)obj;
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
 
-        return TargetCollection.Equals(other.TargetCollection) && Equals(Filter, other.Filter);
-    }
+            if (obj is null || GetType() != obj.GetType())
+            {
+                return false;
+            }
 
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(TargetCollection, Filter);
+            var other = (HasExpression)obj;
+
+            return TargetCollection.Equals(other.TargetCollection) && Equals(Filter, other.Filter);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(TargetCollection, Filter);
+        }
     }
 }

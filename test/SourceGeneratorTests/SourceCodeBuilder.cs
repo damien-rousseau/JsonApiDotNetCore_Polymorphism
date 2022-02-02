@@ -1,56 +1,57 @@
 using System.Text;
 
-namespace SourceGeneratorTests;
-
-internal sealed class SourceCodeBuilder
+namespace SourceGeneratorTests
 {
-    private readonly HashSet<string> _namespaceImports = new();
-    private string? _namespace;
-    private string? _code;
-
-    public string Build()
+    internal sealed class SourceCodeBuilder
     {
-        StringBuilder builder = new();
+        private readonly HashSet<string> _namespaceImports = new();
+        private string? _namespace;
+        private string? _code;
 
-        if (_namespaceImports.Any())
+        public string Build()
         {
-            foreach (string namespaceImport in _namespaceImports)
+            StringBuilder builder = new();
+
+            if (_namespaceImports.Any())
             {
-                builder.AppendLine($"using {namespaceImport};");
+                foreach (string namespaceImport in _namespaceImports)
+                {
+                    builder.AppendLine($"using {namespaceImport};");
+                }
+
+                builder.AppendLine();
             }
 
-            builder.AppendLine();
+            if (_namespace != null)
+            {
+                builder.AppendLine($"namespace {_namespace};");
+                builder.AppendLine();
+            }
+
+            if (_code != null)
+            {
+                builder.Append(_code);
+            }
+
+            return builder.ToString();
         }
 
-        if (_namespace != null)
+        public SourceCodeBuilder WithNamespaceImportFor(Type type)
         {
-            builder.AppendLine($"namespace {_namespace};");
-            builder.AppendLine();
+            _namespaceImports.Add(type.Namespace!);
+            return this;
         }
 
-        if (_code != null)
+        public SourceCodeBuilder InNamespace(string @namespace)
         {
-            builder.Append(_code);
+            _namespace = @namespace;
+            return this;
         }
 
-        return builder.ToString();
-    }
-
-    public SourceCodeBuilder WithNamespaceImportFor(Type type)
-    {
-        _namespaceImports.Add(type.Namespace!);
-        return this;
-    }
-
-    public SourceCodeBuilder InNamespace(string @namespace)
-    {
-        _namespace = @namespace;
-        return this;
-    }
-
-    public SourceCodeBuilder WithCode(string code)
-    {
-        _code = code;
-        return this;
+        public SourceCodeBuilder WithCode(string code)
+        {
+            _code = code;
+            return this;
+        }
     }
 }

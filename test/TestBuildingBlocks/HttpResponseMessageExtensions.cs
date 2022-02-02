@@ -3,36 +3,37 @@ using FluentAssertions;
 using FluentAssertions.Primitives;
 using JetBrains.Annotations;
 
-namespace TestBuildingBlocks;
-
-[PublicAPI]
-public static class HttpResponseMessageExtensions
+namespace TestBuildingBlocks
 {
-    public static HttpResponseMessageAssertions Should(this HttpResponseMessage instance)
+    [PublicAPI]
+    public static class HttpResponseMessageExtensions
     {
-        return new HttpResponseMessageAssertions(instance);
-    }
-
-    public sealed class HttpResponseMessageAssertions : ReferenceTypeAssertions<HttpResponseMessage, HttpResponseMessageAssertions>
-    {
-        protected override string Identifier => "response";
-
-        public HttpResponseMessageAssertions(HttpResponseMessage subject)
-            : base(subject)
+        public static HttpResponseMessageAssertions Should(this HttpResponseMessage instance)
         {
+            return new HttpResponseMessageAssertions(instance);
         }
 
-        // ReSharper disable once UnusedMethodReturnValue.Global
-        [CustomAssertion]
-        public AndConstraint<HttpResponseMessageAssertions> HaveStatusCode(HttpStatusCode statusCode)
+        public sealed class HttpResponseMessageAssertions : ReferenceTypeAssertions<HttpResponseMessage, HttpResponseMessageAssertions>
         {
-            if (Subject.StatusCode != statusCode)
+            protected override string Identifier => "response";
+
+            public HttpResponseMessageAssertions(HttpResponseMessage subject)
+                : base(subject)
             {
-                string responseText = Subject.Content.ReadAsStringAsync().Result;
-                Subject.StatusCode.Should().Be(statusCode, string.IsNullOrEmpty(responseText) ? null : $"response body returned was:\n{responseText}");
             }
 
-            return new AndConstraint<HttpResponseMessageAssertions>(this);
+            // ReSharper disable once UnusedMethodReturnValue.Global
+            [CustomAssertion]
+            public AndConstraint<HttpResponseMessageAssertions> HaveStatusCode(HttpStatusCode statusCode)
+            {
+                if (Subject.StatusCode != statusCode)
+                {
+                    string responseText = Subject.Content.ReadAsStringAsync().Result;
+                    Subject.StatusCode.Should().Be(statusCode, string.IsNullOrEmpty(responseText) ? null : $"response body returned was:\n{responseText}");
+                }
+
+                return new AndConstraint<HttpResponseMessageAssertions>(this);
+            }
         }
     }
 }

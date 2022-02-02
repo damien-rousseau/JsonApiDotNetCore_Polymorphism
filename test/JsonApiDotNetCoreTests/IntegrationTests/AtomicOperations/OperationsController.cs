@@ -5,13 +5,14 @@ using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Resources;
 using Microsoft.Extensions.Logging;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations;
-
-public sealed class OperationsController : JsonApiOperationsController
+namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations
 {
-    public OperationsController(IJsonApiOptions options, IResourceGraph resourceGraph, ILoggerFactory loggerFactory, IOperationsProcessor processor,
-        IJsonApiRequest request, ITargetedFields targetedFields)
-        : base(options, resourceGraph, loggerFactory, processor, request, targetedFields)
+    public sealed class OperationsController : JsonApiOperationsController
     {
+        public OperationsController(IJsonApiOptions options, IResourceGraph resourceGraph, ILoggerFactory loggerFactory, IOperationsProcessor processor,
+            IJsonApiRequest request, ITargetedFields targetedFields)
+            : base(options, resourceGraph, loggerFactory, processor, request, targetedFields)
+        {
+        }
     }
 }

@@ -1,19 +1,20 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Serialization.Objects;
-
-/// <summary>
-/// See https://jsonapi.org/ext/atomic/#result-objects.
-/// </summary>
-[PublicAPI]
-public sealed class AtomicResultObject
+namespace JsonApiDotNetCore.Serialization.Objects
 {
-    [JsonPropertyName("data")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
-    public SingleOrManyData<ResourceObject> Data { get; set; }
+    /// <summary>
+    /// See https://jsonapi.org/ext/atomic/#result-objects.
+    /// </summary>
+    [PublicAPI]
+    public sealed class AtomicResultObject
+    {
+        [JsonPropertyName("data")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+        public SingleOrManyData<ResourceObject> Data { get; set; }
 
-    [JsonPropertyName("meta")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public IDictionary<string, object?>? Meta { get; set; }
+        [JsonPropertyName("meta")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IDictionary<string, object?>? Meta { get; set; }
+    }
 }

@@ -6,46 +6,47 @@ using JsonApiDotNetCore.Repositories;
 using JsonApiDotNetCore.Resources;
 using Microsoft.Extensions.Logging;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.CompositeKeys;
-
-[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-public class CarCompositeKeyAwareRepository<TResource, TId> : EntityFrameworkCoreRepository<TResource, TId>
-    where TResource : class, IIdentifiable<TId>
+namespace JsonApiDotNetCoreTests.IntegrationTests.CompositeKeys
 {
-    private readonly CarExpressionRewriter _writer;
-
-    public CarCompositeKeyAwareRepository(ITargetedFields targetedFields, IDbContextResolver dbContextResolver, IResourceGraph resourceGraph,
-        IResourceFactory resourceFactory, IEnumerable<IQueryConstraintProvider> constraintProviders, ILoggerFactory loggerFactory,
-        IResourceDefinitionAccessor resourceDefinitionAccessor)
-        : base(targetedFields, dbContextResolver, resourceGraph, resourceFactory, constraintProviders, loggerFactory, resourceDefinitionAccessor)
+    [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+    public class CarCompositeKeyAwareRepository<TResource, TId> : EntityFrameworkCoreRepository<TResource, TId>
+        where TResource : class, IIdentifiable<TId>
     {
-        _writer = new CarExpressionRewriter(resourceGraph);
-    }
+        private readonly CarExpressionRewriter _writer;
 
-    protected override IQueryable<TResource> ApplyQueryLayer(QueryLayer queryLayer)
-    {
-        RecursiveRewriteFilterInLayer(queryLayer);
-
-        return base.ApplyQueryLayer(queryLayer);
-    }
-
-    private void RecursiveRewriteFilterInLayer(QueryLayer queryLayer)
-    {
-        if (queryLayer.Filter != null)
+        public CarCompositeKeyAwareRepository(ITargetedFields targetedFields, IDbContextResolver dbContextResolver, IResourceGraph resourceGraph,
+            IResourceFactory resourceFactory, IEnumerable<IQueryConstraintProvider> constraintProviders, ILoggerFactory loggerFactory,
+            IResourceDefinitionAccessor resourceDefinitionAccessor)
+            : base(targetedFields, dbContextResolver, resourceGraph, resourceFactory, constraintProviders, loggerFactory, resourceDefinitionAccessor)
         {
-            queryLayer.Filter = (FilterExpression?)_writer.Visit(queryLayer.Filter, null);
+            _writer = new CarExpressionRewriter(resourceGraph);
         }
 
-        if (queryLayer.Sort != null)
+        protected override IQueryable<TResource> ApplyQueryLayer(QueryLayer queryLayer)
         {
-            queryLayer.Sort = (SortExpression?)_writer.Visit(queryLayer.Sort, null);
+            RecursiveRewriteFilterInLayer(queryLayer);
+
+            return base.ApplyQueryLayer(queryLayer);
         }
 
-        if (queryLayer.Projection != null)
+        private void RecursiveRewriteFilterInLayer(QueryLayer queryLayer)
         {
-            foreach (QueryLayer? nextLayer in queryLayer.Projection.Values.Where(layer => layer != null))
+            if (queryLayer.Filter != null)
             {
-                RecursiveRewriteFilterInLayer(nextLayer!);
+                queryLayer.Filter = (FilterExpression?)_writer.Visit(queryLayer.Filter, null);
+            }
+
+            if (queryLayer.Sort != null)
+            {
+                queryLayer.Sort = (SortExpression?)_writer.Visit(queryLayer.Sort, null);
+            }
+
+            if (queryLayer.Projection != null)
+            {
+                foreach (QueryLayer? nextLayer in queryLayer.Projection.Values.Where(layer => layer != null))
+                {
+                    RecursiveRewriteFilterInLayer(nextLayer!);
+                }
             }
         }
     }

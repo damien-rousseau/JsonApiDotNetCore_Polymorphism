@@ -4,73 +4,74 @@ using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Queries.Expressions;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Internal.Parsing;
-
-[PublicAPI]
-public class QueryStringParameterScopeParser : QueryExpressionParser
+namespace JsonApiDotNetCore.Queries.Internal.Parsing
 {
-    private readonly FieldChainRequirements _chainRequirements;
-    private readonly Action<ResourceFieldAttribute, ResourceType, string>? _validateSingleFieldCallback;
-    private ResourceType? _resourceTypeInScope;
-
-    public QueryStringParameterScopeParser(FieldChainRequirements chainRequirements,
-        Action<ResourceFieldAttribute, ResourceType, string>? validateSingleFieldCallback = null)
+    [PublicAPI]
+    public class QueryStringParameterScopeParser : QueryExpressionParser
     {
-        _chainRequirements = chainRequirements;
-        _validateSingleFieldCallback = validateSingleFieldCallback;
-    }
+        private readonly FieldChainRequirements _chainRequirements;
+        private readonly Action<ResourceFieldAttribute, ResourceType, string>? _validateSingleFieldCallback;
+        private ResourceType? _resourceTypeInScope;
 
-    public QueryStringParameterScopeExpression Parse(string source, ResourceType resourceTypeInScope)
-    {
-        ArgumentGuard.NotNull(resourceTypeInScope, nameof(resourceTypeInScope));
-
-        _resourceTypeInScope = resourceTypeInScope;
-
-        Tokenize(source);
-
-        QueryStringParameterScopeExpression expression = ParseQueryStringParameterScope();
-
-        AssertTokenStackIsEmpty();
-
-        return expression;
-    }
-
-    protected QueryStringParameterScopeExpression ParseQueryStringParameterScope()
-    {
-        if (!TokenStack.TryPop(out Token? token) || token.Kind != TokenKind.Text)
+        public QueryStringParameterScopeParser(FieldChainRequirements chainRequirements,
+            Action<ResourceFieldAttribute, ResourceType, string>? validateSingleFieldCallback = null)
         {
-            throw new QueryParseException("Parameter name expected.");
+            _chainRequirements = chainRequirements;
+            _validateSingleFieldCallback = validateSingleFieldCallback;
         }
 
-        var name = new LiteralConstantExpression(token.Value!);
-
-        ResourceFieldChainExpression? scope = null;
-
-        if (TokenStack.TryPeek(out Token? nextToken) && nextToken.Kind == TokenKind.OpenBracket)
+        public QueryStringParameterScopeExpression Parse(string source, ResourceType resourceTypeInScope)
         {
-            TokenStack.Pop();
+            ArgumentGuard.NotNull(resourceTypeInScope, nameof(resourceTypeInScope));
 
-            scope = ParseFieldChain(_chainRequirements, null);
+            _resourceTypeInScope = resourceTypeInScope;
 
-            EatSingleCharacterToken(TokenKind.CloseBracket);
+            Tokenize(source);
+
+            QueryStringParameterScopeExpression expression = ParseQueryStringParameterScope();
+
+            AssertTokenStackIsEmpty();
+
+            return expression;
         }
 
-        return new QueryStringParameterScopeExpression(name, scope);
-    }
-
-    protected override IImmutableList<ResourceFieldAttribute> OnResolveFieldChain(string path, FieldChainRequirements chainRequirements)
-    {
-        if (chainRequirements == FieldChainRequirements.EndsInToMany)
+        protected QueryStringParameterScopeExpression ParseQueryStringParameterScope()
         {
-            // The mismatch here (ends-in-to-many being interpreted as entire-chain-must-be-to-many) is intentional.
-            return ChainResolver.ResolveToManyChain(_resourceTypeInScope!, path, _validateSingleFieldCallback);
+            if (!TokenStack.TryPop(out Token? token) || token.Kind != TokenKind.Text)
+            {
+                throw new QueryParseException("Parameter name expected.");
+            }
+
+            var name = new LiteralConstantExpression(token.Value!);
+
+            ResourceFieldChainExpression? scope = null;
+
+            if (TokenStack.TryPeek(out Token? nextToken) && nextToken.Kind == TokenKind.OpenBracket)
+            {
+                TokenStack.Pop();
+
+                scope = ParseFieldChain(_chainRequirements, null);
+
+                EatSingleCharacterToken(TokenKind.CloseBracket);
+            }
+
+            return new QueryStringParameterScopeExpression(name, scope);
         }
 
-        if (chainRequirements == FieldChainRequirements.IsRelationship)
+        protected override IImmutableList<ResourceFieldAttribute> OnResolveFieldChain(string path, FieldChainRequirements chainRequirements)
         {
-            return ChainResolver.ResolveRelationshipChain(_resourceTypeInScope!, path, _validateSingleFieldCallback);
-        }
+            if (chainRequirements == FieldChainRequirements.EndsInToMany)
+            {
+                // The mismatch here (ends-in-to-many being interpreted as entire-chain-must-be-to-many) is intentional.
+                return ChainResolver.ResolveToManyChain(_resourceTypeInScope!, path, _validateSingleFieldCallback);
+            }
 
-        throw new InvalidOperationException($"Unexpected combination of chain requirement flags '{chainRequirements}'.");
+            if (chainRequirements == FieldChainRequirements.IsRelationship)
+            {
+                return ChainResolver.ResolveRelationshipChain(_resourceTypeInScope!, path, _validateSingleFieldCallback);
+            }
+
+            throw new InvalidOperationException($"Unexpected combination of chain requirement flags '{chainRequirements}'.");
+        }
     }
 }

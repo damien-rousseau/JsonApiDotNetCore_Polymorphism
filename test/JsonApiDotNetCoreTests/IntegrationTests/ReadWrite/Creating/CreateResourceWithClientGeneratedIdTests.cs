@@ -8,251 +8,252 @@ using Microsoft.Extensions.DependencyInjection;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.ReadWrite.Creating;
-
-public sealed class CreateResourceWithClientGeneratedIdTests : IClassFixture<IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext>>
+namespace JsonApiDotNetCoreTests.IntegrationTests.ReadWrite.Creating
 {
-    private readonly IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext> _testContext;
-    private readonly ReadWriteFakers _fakers = new();
-
-    public CreateResourceWithClientGeneratedIdTests(IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext> testContext)
+    public sealed class CreateResourceWithClientGeneratedIdTests : IClassFixture<IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext>>
     {
-        _testContext = testContext;
+        private readonly IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext> _testContext;
+        private readonly ReadWriteFakers _fakers = new();
 
-        testContext.UseController<WorkItemGroupsController>();
-        testContext.UseController<RgbColorsController>();
-
-        testContext.ConfigureServicesAfterStartup(services =>
+        public CreateResourceWithClientGeneratedIdTests(IntegrationTestContext<TestableStartup<ReadWriteDbContext>, ReadWriteDbContext> testContext)
         {
-            services.AddResourceDefinition<ImplicitlyChangingWorkItemGroupDefinition>();
-        });
+            _testContext = testContext;
 
-        var options = (JsonApiOptions)testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
-        options.AllowClientGeneratedIds = true;
-    }
+            testContext.UseController<WorkItemGroupsController>();
+            testContext.UseController<RgbColorsController>();
 
-    [Fact]
-    public async Task Can_create_resource_with_client_generated_guid_ID_having_side_effects()
-    {
-        // Arrange
-        WorkItemGroup newGroup = _fakers.WorkItemGroup.Generate();
-        newGroup.Id = Guid.NewGuid();
-
-        var requestBody = new
-        {
-            data = new
+            testContext.ConfigureServicesAfterStartup(services =>
             {
-                type = "workItemGroups",
-                id = newGroup.StringId,
-                attributes = new
-                {
-                    name = newGroup.Name
-                }
-            }
-        };
+                services.AddResourceDefinition<ImplicitlyChangingWorkItemGroupDefinition>();
+            });
 
-        const string route = "/workItemGroups";
+            var options = (JsonApiOptions)testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
+            options.AllowClientGeneratedIds = true;
+        }
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.Created);
-
-        string groupName = $"{newGroup.Name}{ImplicitlyChangingWorkItemGroupDefinition.Suffix}";
-
-        responseDocument.Data.SingleValue.ShouldNotBeNull();
-        responseDocument.Data.SingleValue.Type.Should().Be("workItemGroups");
-        responseDocument.Data.SingleValue.Id.Should().Be(newGroup.StringId);
-        responseDocument.Data.SingleValue.Attributes.ShouldContainKey("name").With(value => value.Should().Be(groupName));
-        responseDocument.Data.SingleValue.Relationships.ShouldNotBeEmpty();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_create_resource_with_client_generated_guid_ID_having_side_effects()
         {
-            WorkItemGroup groupInDatabase = await dbContext.Groups.FirstWithIdAsync(newGroup.Id);
+            // Arrange
+            WorkItemGroup newGroup = _fakers.WorkItemGroup.Generate();
+            newGroup.Id = Guid.NewGuid();
 
-            groupInDatabase.Name.Should().Be(groupName);
-        });
-
-        PropertyInfo? property = typeof(WorkItemGroup).GetProperty(nameof(Identifiable<object>.Id));
-        property.ShouldNotBeNull();
-        property.PropertyType.Should().Be(typeof(Guid));
-    }
-
-    [Fact]
-    public async Task Can_create_resource_with_client_generated_guid_ID_having_side_effects_with_fieldset()
-    {
-        // Arrange
-        WorkItemGroup newGroup = _fakers.WorkItemGroup.Generate();
-        newGroup.Id = Guid.NewGuid();
-
-        var requestBody = new
-        {
-            data = new
+            var requestBody = new
             {
-                type = "workItemGroups",
-                id = newGroup.StringId,
-                attributes = new
+                data = new
                 {
-                    name = newGroup.Name
+                    type = "workItemGroups",
+                    id = newGroup.StringId,
+                    attributes = new
+                    {
+                        name = newGroup.Name
+                    }
                 }
-            }
-        };
+            };
 
-        const string route = "/workItemGroups?fields[workItemGroups]=name";
+            const string route = "/workItemGroups";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.Created);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.Created);
 
-        string groupName = $"{newGroup.Name}{ImplicitlyChangingWorkItemGroupDefinition.Suffix}";
+            string groupName = $"{newGroup.Name}{ImplicitlyChangingWorkItemGroupDefinition.Suffix}";
 
-        responseDocument.Data.SingleValue.ShouldNotBeNull();
-        responseDocument.Data.SingleValue.Type.Should().Be("workItemGroups");
-        responseDocument.Data.SingleValue.Id.Should().Be(newGroup.StringId);
-        responseDocument.Data.SingleValue.Attributes.ShouldHaveCount(1);
-        responseDocument.Data.SingleValue.Attributes.ShouldContainKey("name").With(value => value.Should().Be(groupName));
-        responseDocument.Data.SingleValue.Relationships.Should().BeNull();
+            responseDocument.Data.SingleValue.ShouldNotBeNull();
+            responseDocument.Data.SingleValue.Type.Should().Be("workItemGroups");
+            responseDocument.Data.SingleValue.Id.Should().Be(newGroup.StringId);
+            responseDocument.Data.SingleValue.Attributes.ShouldContainKey("name").With(value => value.Should().Be(groupName));
+            responseDocument.Data.SingleValue.Relationships.ShouldNotBeEmpty();
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            WorkItemGroup groupInDatabase = await dbContext.Groups.FirstWithIdAsync(newGroup.Id);
-
-            groupInDatabase.Name.Should().Be(groupName);
-        });
-
-        PropertyInfo? property = typeof(WorkItemGroup).GetProperty(nameof(Identifiable<object>.Id));
-        property.ShouldNotBeNull();
-        property.PropertyType.Should().Be(typeof(Guid));
-    }
-
-    [Fact]
-    public async Task Can_create_resource_with_client_generated_string_ID_having_no_side_effects()
-    {
-        // Arrange
-        RgbColor newColor = _fakers.RgbColor.Generate();
-
-        var requestBody = new
-        {
-            data = new
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                type = "rgbColors",
-                id = newColor.StringId,
-                attributes = new
-                {
-                    displayName = newColor.DisplayName
-                }
-            }
-        };
+                WorkItemGroup groupInDatabase = await dbContext.Groups.FirstWithIdAsync(newGroup.Id);
 
-        const string route = "/rgbColors";
+                groupInDatabase.Name.Should().Be(groupName);
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecutePostAsync<string>(route, requestBody);
+            PropertyInfo? property = typeof(WorkItemGroup).GetProperty(nameof(Identifiable<object>.Id));
+            property.ShouldNotBeNull();
+            property.PropertyType.Should().Be(typeof(Guid));
+        }
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
-
-        responseDocument.Should().BeEmpty();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_create_resource_with_client_generated_guid_ID_having_side_effects_with_fieldset()
         {
-            RgbColor colorInDatabase = await dbContext.RgbColors.FirstWithIdAsync(newColor.Id);
+            // Arrange
+            WorkItemGroup newGroup = _fakers.WorkItemGroup.Generate();
+            newGroup.Id = Guid.NewGuid();
 
-            colorInDatabase.DisplayName.Should().Be(newColor.DisplayName);
-        });
-
-        PropertyInfo? property = typeof(RgbColor).GetProperty(nameof(Identifiable<object>.Id));
-        property.ShouldNotBeNull();
-        property.PropertyType.Should().Be(typeof(string));
-    }
-
-    [Fact]
-    public async Task Can_create_resource_with_client_generated_string_ID_having_no_side_effects_with_fieldset()
-    {
-        // Arrange
-        RgbColor newColor = _fakers.RgbColor.Generate();
-
-        var requestBody = new
-        {
-            data = new
+            var requestBody = new
             {
-                type = "rgbColors",
-                id = newColor.StringId,
-                attributes = new
+                data = new
                 {
-                    displayName = newColor.DisplayName
+                    type = "workItemGroups",
+                    id = newGroup.StringId,
+                    attributes = new
+                    {
+                        name = newGroup.Name
+                    }
                 }
-            }
-        };
+            };
 
-        const string route = "/rgbColors?fields[rgbColors]=id";
+            const string route = "/workItemGroups?fields[workItemGroups]=name";
 
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecutePostAsync<string>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.Created);
 
-        responseDocument.Should().BeEmpty();
+            string groupName = $"{newGroup.Name}{ImplicitlyChangingWorkItemGroupDefinition.Suffix}";
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            RgbColor colorInDatabase = await dbContext.RgbColors.FirstWithIdAsync(newColor.Id);
+            responseDocument.Data.SingleValue.ShouldNotBeNull();
+            responseDocument.Data.SingleValue.Type.Should().Be("workItemGroups");
+            responseDocument.Data.SingleValue.Id.Should().Be(newGroup.StringId);
+            responseDocument.Data.SingleValue.Attributes.ShouldHaveCount(1);
+            responseDocument.Data.SingleValue.Attributes.ShouldContainKey("name").With(value => value.Should().Be(groupName));
+            responseDocument.Data.SingleValue.Relationships.Should().BeNull();
 
-            colorInDatabase.DisplayName.Should().Be(newColor.DisplayName);
-        });
-
-        PropertyInfo? property = typeof(RgbColor).GetProperty(nameof(Identifiable<object>.Id));
-        property.ShouldNotBeNull();
-        property.PropertyType.Should().Be(typeof(string));
-    }
-
-    [Fact]
-    public async Task Cannot_create_resource_for_existing_client_generated_ID()
-    {
-        // Arrange
-        RgbColor existingColor = _fakers.RgbColor.Generate();
-
-        RgbColor colorToCreate = _fakers.RgbColor.Generate();
-        colorToCreate.Id = existingColor.Id;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.RgbColors.Add(existingColor);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            data = new
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                type = "rgbColors",
-                id = colorToCreate.StringId,
-                attributes = new
+                WorkItemGroup groupInDatabase = await dbContext.Groups.FirstWithIdAsync(newGroup.Id);
+
+                groupInDatabase.Name.Should().Be(groupName);
+            });
+
+            PropertyInfo? property = typeof(WorkItemGroup).GetProperty(nameof(Identifiable<object>.Id));
+            property.ShouldNotBeNull();
+            property.PropertyType.Should().Be(typeof(Guid));
+        }
+
+        [Fact]
+        public async Task Can_create_resource_with_client_generated_string_ID_having_no_side_effects()
+        {
+            // Arrange
+            RgbColor newColor = _fakers.RgbColor.Generate();
+
+            var requestBody = new
+            {
+                data = new
                 {
-                    displayName = colorToCreate.DisplayName
+                    type = "rgbColors",
+                    id = newColor.StringId,
+                    attributes = new
+                    {
+                        displayName = newColor.DisplayName
+                    }
                 }
-            }
-        };
+            };
 
-        const string route = "/rgbColors";
+            const string route = "/rgbColors";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecutePostAsync<string>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.Conflict);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Should().BeEmpty();
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        error.Title.Should().Be("Another resource with the specified ID already exists.");
-        error.Detail.Should().Be($"Another resource of type 'rgbColors' with ID '{existingColor.StringId}' already exists.");
-        error.Source.Should().BeNull();
-        error.Meta.Should().NotContainKey("requestBody");
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                RgbColor colorInDatabase = await dbContext.RgbColors.FirstWithIdAsync(newColor.Id);
+
+                colorInDatabase.DisplayName.Should().Be(newColor.DisplayName);
+            });
+
+            PropertyInfo? property = typeof(RgbColor).GetProperty(nameof(Identifiable<object>.Id));
+            property.ShouldNotBeNull();
+            property.PropertyType.Should().Be(typeof(string));
+        }
+
+        [Fact]
+        public async Task Can_create_resource_with_client_generated_string_ID_having_no_side_effects_with_fieldset()
+        {
+            // Arrange
+            RgbColor newColor = _fakers.RgbColor.Generate();
+
+            var requestBody = new
+            {
+                data = new
+                {
+                    type = "rgbColors",
+                    id = newColor.StringId,
+                    attributes = new
+                    {
+                        displayName = newColor.DisplayName
+                    }
+                }
+            };
+
+            const string route = "/rgbColors?fields[rgbColors]=id";
+
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecutePostAsync<string>(route, requestBody);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
+
+            responseDocument.Should().BeEmpty();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                RgbColor colorInDatabase = await dbContext.RgbColors.FirstWithIdAsync(newColor.Id);
+
+                colorInDatabase.DisplayName.Should().Be(newColor.DisplayName);
+            });
+
+            PropertyInfo? property = typeof(RgbColor).GetProperty(nameof(Identifiable<object>.Id));
+            property.ShouldNotBeNull();
+            property.PropertyType.Should().Be(typeof(string));
+        }
+
+        [Fact]
+        public async Task Cannot_create_resource_for_existing_client_generated_ID()
+        {
+            // Arrange
+            RgbColor existingColor = _fakers.RgbColor.Generate();
+
+            RgbColor colorToCreate = _fakers.RgbColor.Generate();
+            colorToCreate.Id = existingColor.Id;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.RgbColors.Add(existingColor);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = new
+                {
+                    type = "rgbColors",
+                    id = colorToCreate.StringId,
+                    attributes = new
+                    {
+                        displayName = colorToCreate.DisplayName
+                    }
+                }
+            };
+
+            const string route = "/rgbColors";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.Conflict);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.Conflict);
+            error.Title.Should().Be("Another resource with the specified ID already exists.");
+            error.Detail.Should().Be($"Another resource of type 'rgbColors' with ID '{existingColor.StringId}' already exists.");
+            error.Source.Should().BeNull();
+            error.Meta.Should().NotContainKey("requestBody");
+        }
     }
 }

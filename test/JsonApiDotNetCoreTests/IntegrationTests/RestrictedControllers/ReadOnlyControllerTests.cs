@@ -4,312 +4,313 @@ using JsonApiDotNetCore.Serialization.Objects;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.RestrictedControllers;
-
-public sealed class ReadOnlyControllerTests : IClassFixture<IntegrationTestContext<TestableStartup<RestrictionDbContext>, RestrictionDbContext>>
+namespace JsonApiDotNetCoreTests.IntegrationTests.RestrictedControllers
 {
-    private readonly IntegrationTestContext<TestableStartup<RestrictionDbContext>, RestrictionDbContext> _testContext;
-    private readonly RestrictionFakers _fakers = new();
-
-    public ReadOnlyControllerTests(IntegrationTestContext<TestableStartup<RestrictionDbContext>, RestrictionDbContext> testContext)
+    public sealed class ReadOnlyControllerTests : IClassFixture<IntegrationTestContext<TestableStartup<RestrictionDbContext>, RestrictionDbContext>>
     {
-        _testContext = testContext;
+        private readonly IntegrationTestContext<TestableStartup<RestrictionDbContext>, RestrictionDbContext> _testContext;
+        private readonly RestrictionFakers _fakers = new();
 
-        testContext.UseController<BedsController>();
-    }
-
-    [Fact]
-    public async Task Can_get_resources()
-    {
-        // Arrange
-        const string route = "/beds";
-
-        // Act
-        (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Can_get_resource()
-    {
-        // Arrange
-        Bed bed = _fakers.Bed.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        public ReadOnlyControllerTests(IntegrationTestContext<TestableStartup<RestrictionDbContext>, RestrictionDbContext> testContext)
         {
-            dbContext.Beds.Add(bed);
-            await dbContext.SaveChangesAsync();
-        });
+            _testContext = testContext;
 
-        string route = $"/beds/{bed.StringId}";
+            testContext.UseController<BedsController>();
+        }
 
-        // Act
-        (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Can_get_secondary_resources()
-    {
-        // Arrange
-        Bed bed = _fakers.Bed.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_get_resources()
         {
-            dbContext.Beds.Add(bed);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            const string route = "/beds";
 
-        string route = $"/beds/{bed.StringId}/pillows";
+            // Act
+            (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
 
-        // Act
-        (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+        }
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Can_get_secondary_resource()
-    {
-        // Arrange
-        Bed bed = _fakers.Bed.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_get_resource()
         {
-            dbContext.Beds.Add(bed);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Bed bed = _fakers.Bed.Generate();
 
-        string route = $"/beds/{bed.StringId}/room";
-
-        // Act
-        (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Can_get_relationship()
-    {
-        // Arrange
-        Bed bed = _fakers.Bed.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Beds.Add(bed);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/beds/{bed.StringId}/relationships/pillows";
-
-        // Act
-        (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Cannot_create_resource()
-    {
-        // Arrange
-        var requestBody = new
-        {
-            data = new
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                type = "beds",
-                attributes = new
-                {
-                }
-            }
-        };
+                dbContext.Beds.Add(bed);
+                await dbContext.SaveChangesAsync();
+            });
 
-        const string route = "/beds?include=pillows";
+            string route = $"/beds/{bed.StringId}";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+        }
 
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        error.Title.Should().Be("The requested endpoint is not accessible.");
-        error.Detail.Should().Be("Endpoint '/beds' is not accessible for POST requests.");
-    }
-
-    [Fact]
-    public async Task Cannot_update_resource()
-    {
-        // Arrange
-        Bed existingBed = _fakers.Bed.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_get_secondary_resources()
         {
-            dbContext.Beds.Add(existingBed);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Bed bed = _fakers.Bed.Generate();
 
-        var requestBody = new
-        {
-            data = new
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                type = "beds",
-                id = existingBed.StringId,
-                attributes = new
+                dbContext.Beds.Add(bed);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/beds/{bed.StringId}/pillows";
+
+            // Act
+            (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task Can_get_secondary_resource()
+        {
+            // Arrange
+            Bed bed = _fakers.Bed.Generate();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Beds.Add(bed);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/beds/{bed.StringId}/room";
+
+            // Act
+            (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task Can_get_relationship()
+        {
+            // Arrange
+            Bed bed = _fakers.Bed.Generate();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Beds.Add(bed);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/beds/{bed.StringId}/relationships/pillows";
+
+            // Act
+            (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<string>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task Cannot_create_resource()
+        {
+            // Arrange
+            var requestBody = new
+            {
+                data = new
                 {
+                    type = "beds",
+                    attributes = new
+                    {
+                    }
                 }
-            }
-        };
+            };
 
-        string route = $"/beds/{existingBed.StringId}";
+            const string route = "/beds?include=pillows";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        error.Title.Should().Be("The requested endpoint is not accessible.");
-        error.Detail.Should().Be($"Endpoint '{route}' is not accessible for PATCH requests.");
-    }
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            error.Title.Should().Be("The requested endpoint is not accessible.");
+            error.Detail.Should().Be("Endpoint '/beds' is not accessible for POST requests.");
+        }
 
-    [Fact]
-    public async Task Cannot_delete_resource()
-    {
-        // Arrange
-        Bed existingBed = _fakers.Bed.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_update_resource()
         {
-            dbContext.Beds.Add(existingBed);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Bed existingBed = _fakers.Bed.Generate();
 
-        string route = $"/beds/{existingBed.StringId}";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Beds.Add(existingBed);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route);
+            var requestBody = new
+            {
+                data = new
+                {
+                    type = "beds",
+                    id = existingBed.StringId,
+                    attributes = new
+                    {
+                    }
+                }
+            };
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
+            string route = $"/beds/{existingBed.StringId}";
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        error.Title.Should().Be("The requested endpoint is not accessible.");
-        error.Detail.Should().Be($"Endpoint '{route}' is not accessible for DELETE requests.");
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
 
-    [Fact]
-    public async Task Cannot_update_relationship()
-    {
-        // Arrange
-        Bed existingBed = _fakers.Bed.Generate();
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            error.Title.Should().Be("The requested endpoint is not accessible.");
+            error.Detail.Should().Be($"Endpoint '{route}' is not accessible for PATCH requests.");
+        }
+
+        [Fact]
+        public async Task Cannot_delete_resource()
         {
-            dbContext.Beds.Add(existingBed);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Bed existingBed = _fakers.Bed.Generate();
 
-        var requestBody = new
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Beds.Add(existingBed);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/beds/{existingBed.StringId}";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            error.Title.Should().Be("The requested endpoint is not accessible.");
+            error.Detail.Should().Be($"Endpoint '{route}' is not accessible for DELETE requests.");
+        }
+
+        [Fact]
+        public async Task Cannot_update_relationship()
         {
-            data = (object?)null
-        };
+            // Arrange
+            Bed existingBed = _fakers.Bed.Generate();
 
-        string route = $"/beds/{existingBed.StringId}/relationships/room";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Beds.Add(existingBed);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
+            var requestBody = new
+            {
+                data = (object?)null
+            };
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
+            string route = $"/beds/{existingBed.StringId}/relationships/room";
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        error.Title.Should().Be("The requested endpoint is not accessible.");
-        error.Detail.Should().Be($"Endpoint '{route}' is not accessible for PATCH requests.");
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
 
-    [Fact]
-    public async Task Cannot_add_to_ToMany_relationship()
-    {
-        // Arrange
-        Bed existingBed = _fakers.Bed.Generate();
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            error.Title.Should().Be("The requested endpoint is not accessible.");
+            error.Detail.Should().Be($"Endpoint '{route}' is not accessible for PATCH requests.");
+        }
+
+        [Fact]
+        public async Task Cannot_add_to_ToMany_relationship()
         {
-            dbContext.Beds.Add(existingBed);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Bed existingBed = _fakers.Bed.Generate();
 
-        var requestBody = new
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Beds.Add(existingBed);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = Array.Empty<object>()
+            };
+
+            string route = $"/beds/{existingBed.StringId}/relationships/pillows";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            error.Title.Should().Be("The requested endpoint is not accessible.");
+            error.Detail.Should().Be($"Endpoint '{route}' is not accessible for POST requests.");
+        }
+
+        [Fact]
+        public async Task Cannot_remove_from_ToMany_relationship()
         {
-            data = Array.Empty<object>()
-        };
+            // Arrange
+            Bed existingBed = _fakers.Bed.Generate();
 
-        string route = $"/beds/{existingBed.StringId}/relationships/pillows";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Beds.Add(existingBed);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+            var requestBody = new
+            {
+                data = Array.Empty<object>()
+            };
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
+            string route = $"/beds/{existingBed.StringId}/relationships/pillows";
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route, requestBody);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        error.Title.Should().Be("The requested endpoint is not accessible.");
-        error.Detail.Should().Be($"Endpoint '{route}' is not accessible for POST requests.");
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
 
-    [Fact]
-    public async Task Cannot_remove_from_ToMany_relationship()
-    {
-        // Arrange
-        Bed existingBed = _fakers.Bed.Generate();
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Beds.Add(existingBed);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            data = Array.Empty<object>()
-        };
-
-        string route = $"/beds/{existingBed.StringId}/relationships/pillows";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route, requestBody);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.Forbidden);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        error.Title.Should().Be("The requested endpoint is not accessible.");
-        error.Detail.Should().Be($"Endpoint '{route}' is not accessible for DELETE requests.");
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            error.Title.Should().Be("The requested endpoint is not accessible.");
+            error.Detail.Should().Be($"Endpoint '{route}' is not accessible for DELETE requests.");
+        }
     }
 }

@@ -1,29 +1,30 @@
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore;
 
-namespace JsonApiDotNetCore.Repositories;
-
-/// <inheritdoc />
-[PublicAPI]
-public sealed class DbContextResolver<TDbContext> : IDbContextResolver
-    where TDbContext : DbContext
+namespace JsonApiDotNetCore.Repositories
 {
-    private readonly TDbContext _dbContext;
-
-    public DbContextResolver(TDbContext dbContext)
+    /// <inheritdoc />
+    [PublicAPI]
+    public sealed class DbContextResolver<TDbContext> : IDbContextResolver
+        where TDbContext : DbContext
     {
-        ArgumentGuard.NotNull(dbContext, nameof(dbContext));
+        private readonly TDbContext _dbContext;
 
-        _dbContext = dbContext;
-    }
+        public DbContextResolver(TDbContext dbContext)
+        {
+            ArgumentGuard.NotNull(dbContext, nameof(dbContext));
 
-    public DbContext GetContext()
-    {
-        return _dbContext;
-    }
+            _dbContext = dbContext;
+        }
 
-    public TDbContext GetTypedContext()
-    {
-        return _dbContext;
+        public DbContext GetContext()
+        {
+            return _dbContext;
+        }
+
+        public TDbContext GetTypedContext()
+        {
+            return _dbContext;
+        }
     }
 }

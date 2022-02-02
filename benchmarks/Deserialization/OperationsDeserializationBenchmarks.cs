@@ -4,280 +4,281 @@ using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Serialization.Objects;
 
-namespace Benchmarks.Deserialization;
-
-[MarkdownExporter]
-// ReSharper disable once ClassCanBeSealed.Global
-public class OperationsDeserializationBenchmarks : DeserializationBenchmarkBase
+namespace Benchmarks.Deserialization
 {
-    private static readonly string RequestBody = JsonSerializer.Serialize(new
+    [MarkdownExporter]
+    // ReSharper disable once ClassCanBeSealed.Global
+    public class OperationsDeserializationBenchmarks : DeserializationBenchmarkBase
     {
-        atomic__operations = new object[]
+        private static readonly string RequestBody = JsonSerializer.Serialize(new
         {
-            new
+            atomic__operations = new object[]
             {
-                op = "add",
-                data = new
+                new
                 {
-                    type = "incomingResources",
-                    lid = "a-1",
-                    attributes = new
+                    op = "add",
+                    data = new
                     {
-                        attribute01 = true,
-                        attribute02 = 'A',
-                        attribute03 = 100UL,
-                        attribute04 = 100.001m,
-                        attribute05 = 200.002f,
-                        attribute06 = "text",
-                        attribute07 = DateTime.MaxValue,
-                        attribute08 = DateTimeOffset.MaxValue,
-                        attribute09 = TimeSpan.MaxValue,
-                        attribute10 = DayOfWeek.Friday
-                    },
-                    relationships = new
-                    {
-                        single1 = new
+                        type = "incomingResources",
+                        lid = "a-1",
+                        attributes = new
                         {
-                            data = new
-                            {
-                                type = "incomingResources",
-                                id = "101"
-                            }
+                            attribute01 = true,
+                            attribute02 = 'A',
+                            attribute03 = 100UL,
+                            attribute04 = 100.001m,
+                            attribute05 = 200.002f,
+                            attribute06 = "text",
+                            attribute07 = DateTime.MaxValue,
+                            attribute08 = DateTimeOffset.MaxValue,
+                            attribute09 = TimeSpan.MaxValue,
+                            attribute10 = DayOfWeek.Friday
                         },
-                        single2 = new
+                        relationships = new
                         {
-                            data = new
+                            single1 = new
                             {
-                                type = "incomingResources",
-                                id = "102"
-                            }
-                        },
-                        single3 = new
-                        {
-                            data = new
-                            {
-                                type = "incomingResources",
-                                id = "103"
-                            }
-                        },
-                        single4 = new
-                        {
-                            data = new
-                            {
-                                type = "incomingResources",
-                                id = "104"
-                            }
-                        },
-                        single5 = new
-                        {
-                            data = new
-                            {
-                                type = "incomingResources",
-                                id = "105"
-                            }
-                        },
-                        multi1 = new
-                        {
-                            data = new[]
-                            {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "201"
+                                    id = "101"
                                 }
-                            }
-                        },
-                        multi2 = new
-                        {
-                            data = new[]
+                            },
+                            single2 = new
                             {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "202"
+                                    id = "102"
                                 }
-                            }
-                        },
-                        multi3 = new
-                        {
-                            data = new[]
+                            },
+                            single3 = new
                             {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "203"
+                                    id = "103"
                                 }
-                            }
-                        },
-                        multi4 = new
-                        {
-                            data = new[]
+                            },
+                            single4 = new
                             {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "204"
+                                    id = "104"
                                 }
-                            }
-                        },
-                        multi5 = new
-                        {
-                            data = new[]
+                            },
+                            single5 = new
                             {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "205"
+                                    id = "105"
+                                }
+                            },
+                            multi1 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "201"
+                                    }
+                                }
+                            },
+                            multi2 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "202"
+                                    }
+                                }
+                            },
+                            multi3 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "203"
+                                    }
+                                }
+                            },
+                            multi4 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "204"
+                                    }
+                                }
+                            },
+                            multi5 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "205"
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            },
-            new
-            {
-                op = "update",
-                data = new
+                },
+                new
                 {
-                    type = "incomingResources",
-                    id = "1",
-                    attributes = new
+                    op = "update",
+                    data = new
                     {
-                        attribute01 = true,
-                        attribute02 = 'A',
-                        attribute03 = 100UL,
-                        attribute04 = 100.001m,
-                        attribute05 = 200.002f,
-                        attribute06 = "text",
-                        attribute07 = DateTime.MaxValue,
-                        attribute08 = DateTimeOffset.MaxValue,
-                        attribute09 = TimeSpan.MaxValue,
-                        attribute10 = DayOfWeek.Friday
-                    },
-                    relationships = new
-                    {
-                        single1 = new
+                        type = "incomingResources",
+                        id = "1",
+                        attributes = new
                         {
-                            data = new
-                            {
-                                type = "incomingResources",
-                                id = "101"
-                            }
+                            attribute01 = true,
+                            attribute02 = 'A',
+                            attribute03 = 100UL,
+                            attribute04 = 100.001m,
+                            attribute05 = 200.002f,
+                            attribute06 = "text",
+                            attribute07 = DateTime.MaxValue,
+                            attribute08 = DateTimeOffset.MaxValue,
+                            attribute09 = TimeSpan.MaxValue,
+                            attribute10 = DayOfWeek.Friday
                         },
-                        single2 = new
+                        relationships = new
                         {
-                            data = new
+                            single1 = new
                             {
-                                type = "incomingResources",
-                                id = "102"
-                            }
-                        },
-                        single3 = new
-                        {
-                            data = new
-                            {
-                                type = "incomingResources",
-                                id = "103"
-                            }
-                        },
-                        single4 = new
-                        {
-                            data = new
-                            {
-                                type = "incomingResources",
-                                id = "104"
-                            }
-                        },
-                        single5 = new
-                        {
-                            data = new
-                            {
-                                type = "incomingResources",
-                                id = "105"
-                            }
-                        },
-                        multi1 = new
-                        {
-                            data = new[]
-                            {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "201"
+                                    id = "101"
                                 }
-                            }
-                        },
-                        multi2 = new
-                        {
-                            data = new[]
+                            },
+                            single2 = new
                             {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "202"
+                                    id = "102"
                                 }
-                            }
-                        },
-                        multi3 = new
-                        {
-                            data = new[]
+                            },
+                            single3 = new
                             {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "203"
+                                    id = "103"
                                 }
-                            }
-                        },
-                        multi4 = new
-                        {
-                            data = new[]
+                            },
+                            single4 = new
                             {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "204"
+                                    id = "104"
                                 }
-                            }
-                        },
-                        multi5 = new
-                        {
-                            data = new[]
+                            },
+                            single5 = new
                             {
-                                new
+                                data = new
                                 {
                                     type = "incomingResources",
-                                    id = "205"
+                                    id = "105"
+                                }
+                            },
+                            multi1 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "201"
+                                    }
+                                }
+                            },
+                            multi2 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "202"
+                                    }
+                                }
+                            },
+                            multi3 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "203"
+                                    }
+                                }
+                            },
+                            multi4 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "204"
+                                    }
+                                }
+                            },
+                            multi5 = new
+                            {
+                                data = new[]
+                                {
+                                    new
+                                    {
+                                        type = "incomingResources",
+                                        id = "205"
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            },
-            new
-            {
-                op = "remove",
-                @ref = new
+                },
+                new
                 {
-                    type = "incomingResources",
-                    lid = "a-1"
+                    op = "remove",
+                    @ref = new
+                    {
+                        type = "incomingResources",
+                        lid = "a-1"
+                    }
                 }
             }
-        }
-    }).Replace("atomic__operations", "atomic:operations");
+        }).Replace("atomic__operations", "atomic:operations");
 
-    [Benchmark]
-    public object? DeserializeOperationsRequest()
-    {
-        var document = JsonSerializer.Deserialize<Document>(RequestBody, SerializerReadOptions)!;
-        return DocumentAdapter.Convert(document);
-    }
-
-    protected override JsonApiRequest CreateJsonApiRequest(IResourceGraph resourceGraph)
-    {
-        return new JsonApiRequest
+        [Benchmark]
+        public object? DeserializeOperationsRequest()
         {
-            Kind = EndpointKind.AtomicOperations
-        };
+            var document = JsonSerializer.Deserialize<Document>(RequestBody, SerializerReadOptions)!;
+            return DocumentAdapter.Convert(document);
+        }
+
+        protected override JsonApiRequest CreateJsonApiRequest(IResourceGraph resourceGraph)
+        {
+            return new JsonApiRequest
+            {
+                Kind = EndpointKind.AtomicOperations
+            };
+        }
     }
 }

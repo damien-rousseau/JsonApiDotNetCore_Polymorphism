@@ -1,6 +1,7 @@
-namespace JsonApiPolymorphismExample.Managers.Contracts;
-
-public interface IConstraintsManager
+namespace JsonApiPolymorphismExample.Managers.Contracts
 {
-    ConstraintFilters Build();
+    public interface IConstraintsManager
+    {
+        ConstraintFilters Build();
+    }
 }

@@ -1,20 +1,21 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public sealed class UserLoginNameChangedContent : IMessageContent
+namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages
 {
-    public int FormatVersion => 1;
-
-    public Guid UserId { get; }
-    public string BeforeUserLoginName { get; }
-    public string AfterUserLoginName { get; }
-
-    public UserLoginNameChangedContent(Guid userId, string beforeUserLoginName, string afterUserLoginName)
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public sealed class UserLoginNameChangedContent : IMessageContent
     {
-        UserId = userId;
-        BeforeUserLoginName = beforeUserLoginName;
-        AfterUserLoginName = afterUserLoginName;
+        public int FormatVersion => 1;
+
+        public Guid UserId { get; }
+        public string BeforeUserLoginName { get; }
+        public string AfterUserLoginName { get; }
+
+        public UserLoginNameChangedContent(Guid userId, string beforeUserLoginName, string afterUserLoginName)
+        {
+            UserId = userId;
+            BeforeUserLoginName = beforeUserLoginName;
+            AfterUserLoginName = afterUserLoginName;
+        }
     }
 }

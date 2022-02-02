@@ -1,6 +1,7 @@
-﻿namespace JsonApiPolymorphismExample.Managers;
-
-public class ConstraintFilters
+namespace JsonApiPolymorphismExample.Managers
 {
+    public class ConstraintFilters
+    {
 
+    }
 }

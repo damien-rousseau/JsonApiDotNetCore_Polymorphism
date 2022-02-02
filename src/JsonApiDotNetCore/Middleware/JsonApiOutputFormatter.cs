@@ -2,25 +2,26 @@ using JsonApiDotNetCore.Serialization.Response;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace JsonApiDotNetCore.Middleware;
-
-/// <inheritdoc />
-public sealed class JsonApiOutputFormatter : IJsonApiOutputFormatter
+namespace JsonApiDotNetCore.Middleware
 {
     /// <inheritdoc />
-    public bool CanWriteResult(OutputFormatterCanWriteContext context)
+    public sealed class JsonApiOutputFormatter : IJsonApiOutputFormatter
     {
-        ArgumentGuard.NotNull(context, nameof(context));
+        /// <inheritdoc />
+        public bool CanWriteResult(OutputFormatterCanWriteContext context)
+        {
+            ArgumentGuard.NotNull(context, nameof(context));
 
-        return context.HttpContext.IsJsonApiRequest();
-    }
+            return context.HttpContext.IsJsonApiRequest();
+        }
 
-    /// <inheritdoc />
-    public async Task WriteAsync(OutputFormatterWriteContext context)
-    {
-        ArgumentGuard.NotNull(context, nameof(context));
+        /// <inheritdoc />
+        public async Task WriteAsync(OutputFormatterWriteContext context)
+        {
+            ArgumentGuard.NotNull(context, nameof(context));
 
-        var writer = context.HttpContext.RequestServices.GetRequiredService<IJsonApiWriter>();
-        await writer.WriteAsync(context.Object, context.HttpContext);
+            var writer = context.HttpContext.RequestServices.GetRequiredService<IJsonApiWriter>();
+            await writer.WriteAsync(context.Object, context.HttpContext);
+        }
     }
 }

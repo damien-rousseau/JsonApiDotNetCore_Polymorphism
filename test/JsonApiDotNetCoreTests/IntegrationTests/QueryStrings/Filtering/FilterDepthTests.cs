@@ -7,531 +7,532 @@ using Microsoft.Extensions.DependencyInjection;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.QueryStrings.Filtering;
-
-public sealed class FilterDepthTests : IClassFixture<IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext>>
+namespace JsonApiDotNetCoreTests.IntegrationTests.QueryStrings.Filtering
 {
-    private readonly IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext> _testContext;
-    private readonly QueryStringFakers _fakers = new();
-
-    public FilterDepthTests(IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext> testContext)
+    public sealed class FilterDepthTests : IClassFixture<IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext>>
     {
-        _testContext = testContext;
+        private readonly IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext> _testContext;
+        private readonly QueryStringFakers _fakers = new();
 
-        testContext.UseController<BlogsController>();
-        testContext.UseController<BlogPostsController>();
-
-        var options = (JsonApiOptions)testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
-        options.EnableLegacyFilterNotation = false;
-    }
-
-    [Fact]
-    public async Task Can_filter_in_primary_resources()
-    {
-        // Arrange
-        List<BlogPost> posts = _fakers.BlogPost.Generate(2);
-        posts[0].Caption = "One";
-        posts[1].Caption = "Two";
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        public FilterDepthTests(IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext> testContext)
         {
-            await dbContext.ClearTableAsync<BlogPost>();
-            dbContext.Posts.AddRange(posts);
-            await dbContext.SaveChangesAsync();
-        });
+            _testContext = testContext;
 
-        const string route = "/blogPosts?filter=equals(caption,'Two')";
+            testContext.UseController<BlogsController>();
+            testContext.UseController<BlogPostsController>();
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            var options = (JsonApiOptions)testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
+            options.EnableLegacyFilterNotation = false;
+        }
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(posts[1].StringId);
-    }
-
-    [Fact]
-    public async Task Cannot_filter_in_single_primary_resource()
-    {
-        // Arrange
-        BlogPost post = _fakers.BlogPost.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_in_primary_resources()
         {
-            dbContext.Posts.Add(post);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            List<BlogPost> posts = _fakers.BlogPost.Generate(2);
+            posts[0].Caption = "One";
+            posts[1].Caption = "Two";
 
-        string route = $"/blogPosts/{post.StringId}?filter=equals(caption,'Two')";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<BlogPost>();
+                dbContext.Posts.AddRange(posts);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/blogPosts?filter=equals(caption,'Two')";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.BadRequest);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        error.Title.Should().Be("The specified filter is invalid.");
-        error.Detail.Should().Be("This query string parameter can only be used on a collection of resources (not on a single resource).");
-        error.Source.ShouldNotBeNull();
-        error.Source.Parameter.Should().Be("filter");
-    }
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(posts[1].StringId);
+        }
 
-    [Fact]
-    public async Task Can_filter_in_secondary_resources()
-    {
-        // Arrange
-        Blog blog = _fakers.Blog.Generate();
-        blog.Posts = _fakers.BlogPost.Generate(2);
-        blog.Posts[0].Caption = "One";
-        blog.Posts[1].Caption = "Two";
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_filter_in_single_primary_resource()
         {
-            dbContext.Blogs.Add(blog);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            BlogPost post = _fakers.BlogPost.Generate();
 
-        string route = $"/blogs/{blog.StringId}/posts?filter=equals(caption,'Two')";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Posts.Add(post);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            string route = $"/blogPosts/{post.StringId}?filter=equals(caption,'Two')";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(blog.Posts[1].StringId);
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.BadRequest);
 
-    [Fact]
-    public async Task Cannot_filter_in_single_secondary_resource()
-    {
-        // Arrange
-        BlogPost post = _fakers.BlogPost.Generate();
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            error.Title.Should().Be("The specified filter is invalid.");
+            error.Detail.Should().Be("This query string parameter can only be used on a collection of resources (not on a single resource).");
+            error.Source.ShouldNotBeNull();
+            error.Source.Parameter.Should().Be("filter");
+        }
+
+        [Fact]
+        public async Task Can_filter_in_secondary_resources()
         {
-            dbContext.Posts.Add(post);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Blog blog = _fakers.Blog.Generate();
+            blog.Posts = _fakers.BlogPost.Generate(2);
+            blog.Posts[0].Caption = "One";
+            blog.Posts[1].Caption = "Two";
 
-        string route = $"/blogPosts/{post.StringId}/author?filter=equals(displayName,'John Smith')";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Blogs.Add(blog);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            string route = $"/blogs/{blog.StringId}/posts?filter=equals(caption,'Two')";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.BadRequest);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        error.Title.Should().Be("The specified filter is invalid.");
-        error.Detail.Should().Be("This query string parameter can only be used on a collection of resources (not on a single resource).");
-        error.Source.ShouldNotBeNull();
-        error.Source.Parameter.Should().Be("filter");
-    }
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(blog.Posts[1].StringId);
+        }
 
-    [Fact]
-    public async Task Can_filter_on_ManyToOne_relationship()
-    {
-        // Arrange
-        List<BlogPost> posts = _fakers.BlogPost.Generate(3);
-        posts[0].Author = _fakers.WebAccount.Generate();
-        posts[0].Author!.UserName = "Conner";
-        posts[1].Author = _fakers.WebAccount.Generate();
-        posts[1].Author!.UserName = "Smith";
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_filter_in_single_secondary_resource()
         {
-            await dbContext.ClearTableAsync<BlogPost>();
-            dbContext.Posts.AddRange(posts);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            BlogPost post = _fakers.BlogPost.Generate();
 
-        const string route = "/blogPosts?include=author&filter=or(equals(author.userName,'Smith'),equals(author,null))";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Posts.Add(post);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            string route = $"/blogPosts/{post.StringId}/author?filter=equals(displayName,'John Smith')";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(2);
-        responseDocument.Data.ManyValue.Should().ContainSingle(post => post.Id == posts[1].StringId);
-        responseDocument.Data.ManyValue.Should().ContainSingle(post => post.Id == posts[2].StringId);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.BadRequest);
 
-        responseDocument.Included.ShouldHaveCount(1);
-        responseDocument.Included[0].Id.Should().Be(posts[1].Author!.StringId);
-    }
+            responseDocument.Errors.ShouldHaveCount(1);
 
-    [Fact]
-    public async Task Can_filter_on_OneToMany_relationship()
-    {
-        // Arrange
-        List<Blog> blogs = _fakers.Blog.Generate(2);
-        blogs[1].Posts = _fakers.BlogPost.Generate(1);
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            error.Title.Should().Be("The specified filter is invalid.");
+            error.Detail.Should().Be("This query string parameter can only be used on a collection of resources (not on a single resource).");
+            error.Source.ShouldNotBeNull();
+            error.Source.Parameter.Should().Be("filter");
+        }
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_on_ManyToOne_relationship()
         {
-            await dbContext.ClearTableAsync<Blog>();
-            dbContext.Blogs.AddRange(blogs);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            List<BlogPost> posts = _fakers.BlogPost.Generate(3);
+            posts[0].Author = _fakers.WebAccount.Generate();
+            posts[0].Author!.UserName = "Conner";
+            posts[1].Author = _fakers.WebAccount.Generate();
+            posts[1].Author!.UserName = "Smith";
 
-        const string route = "/blogs?filter=greaterThan(count(posts),'0')";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<BlogPost>();
+                dbContext.Posts.AddRange(posts);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/blogPosts?include=author&filter=or(equals(author.userName,'Smith'),equals(author,null))";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(blogs[1].StringId);
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-    [Fact]
-    public async Task Can_filter_on_OneToMany_relationship_with_nested_condition()
-    {
-        // Arrange
-        List<Blog> blogs = _fakers.Blog.Generate(2);
-        blogs[0].Posts = _fakers.BlogPost.Generate(1);
-        blogs[1].Posts = _fakers.BlogPost.Generate(1);
-        blogs[1].Posts[0].Comments = _fakers.Comment.Generate(1).ToHashSet();
-        blogs[1].Posts[0].Comments.ElementAt(0).Text = "ABC";
+            responseDocument.Data.ManyValue.ShouldHaveCount(2);
+            responseDocument.Data.ManyValue.Should().ContainSingle(post => post.Id == posts[1].StringId);
+            responseDocument.Data.ManyValue.Should().ContainSingle(post => post.Id == posts[2].StringId);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            responseDocument.Included.ShouldHaveCount(1);
+            responseDocument.Included[0].Id.Should().Be(posts[1].Author!.StringId);
+        }
+
+        [Fact]
+        public async Task Can_filter_on_OneToMany_relationship()
         {
-            await dbContext.ClearTableAsync<Blog>();
-            dbContext.Blogs.AddRange(blogs);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            List<Blog> blogs = _fakers.Blog.Generate(2);
+            blogs[1].Posts = _fakers.BlogPost.Generate(1);
 
-        const string route = "/blogs?filter=has(posts,has(comments,startsWith(text,'A')))";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<Blog>();
+                dbContext.Blogs.AddRange(blogs);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/blogs?filter=greaterThan(count(posts),'0')";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(blogs[1].StringId);
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-    [Fact]
-    public async Task Can_filter_on_ManyToMany_relationship()
-    {
-        // Arrange
-        List<BlogPost> posts = _fakers.BlogPost.Generate(2);
-        posts[1].Labels = _fakers.Label.Generate(1).ToHashSet();
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(blogs[1].StringId);
+        }
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_on_OneToMany_relationship_with_nested_condition()
         {
-            await dbContext.ClearTableAsync<BlogPost>();
-            dbContext.Posts.AddRange(posts);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            List<Blog> blogs = _fakers.Blog.Generate(2);
+            blogs[0].Posts = _fakers.BlogPost.Generate(1);
+            blogs[1].Posts = _fakers.BlogPost.Generate(1);
+            blogs[1].Posts[0].Comments = _fakers.Comment.Generate(1).ToHashSet();
+            blogs[1].Posts[0].Comments.ElementAt(0).Text = "ABC";
 
-        const string route = "/blogPosts?filter=has(labels)";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<Blog>();
+                dbContext.Blogs.AddRange(blogs);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/blogs?filter=has(posts,has(comments,startsWith(text,'A')))";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(posts[1].StringId);
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-    [Fact]
-    public async Task Can_filter_on_ManyToMany_relationship_with_nested_condition()
-    {
-        // Arrange
-        List<Blog> blogs = _fakers.Blog.Generate(2);
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(blogs[1].StringId);
+        }
 
-        blogs[0].Posts = _fakers.BlogPost.Generate(1);
-
-        blogs[1].Posts = _fakers.BlogPost.Generate(1);
-        blogs[1].Posts[0].Labels = _fakers.Label.Generate(1).ToHashSet();
-        blogs[1].Posts[0].Labels.ElementAt(0).Color = LabelColor.Green;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_on_ManyToMany_relationship()
         {
-            await dbContext.ClearTableAsync<Blog>();
-            dbContext.Blogs.AddRange(blogs);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            List<BlogPost> posts = _fakers.BlogPost.Generate(2);
+            posts[1].Labels = _fakers.Label.Generate(1).ToHashSet();
 
-        const string route = "/blogs?filter=has(posts,has(labels,equals(color,'Green')))";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<BlogPost>();
+                dbContext.Posts.AddRange(posts);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/blogPosts?filter=has(labels)";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(blogs[1].StringId);
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-    [Fact]
-    public async Task Can_filter_in_scope_of_OneToMany_relationship()
-    {
-        // Arrange
-        Blog blog = _fakers.Blog.Generate();
-        blog.Posts = _fakers.BlogPost.Generate(2);
-        blog.Posts[0].Caption = "One";
-        blog.Posts[1].Caption = "Two";
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(posts[1].StringId);
+        }
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_on_ManyToMany_relationship_with_nested_condition()
         {
-            await dbContext.ClearTableAsync<Blog>();
-            dbContext.Blogs.Add(blog);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            List<Blog> blogs = _fakers.Blog.Generate(2);
 
-        const string route = "/blogs?include=posts&filter[posts]=equals(caption,'Two')";
+            blogs[0].Posts = _fakers.BlogPost.Generate(1);
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            blogs[1].Posts = _fakers.BlogPost.Generate(1);
+            blogs[1].Posts[0].Labels = _fakers.Label.Generate(1).ToHashSet();
+            blogs[1].Posts[0].Labels.ElementAt(0).Color = LabelColor.Green;
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<Blog>();
+                dbContext.Blogs.AddRange(blogs);
+                await dbContext.SaveChangesAsync();
+            });
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            const string route = "/blogs?filter=has(posts,has(labels,equals(color,'Green')))";
 
-        responseDocument.Included.ShouldHaveCount(1);
-        responseDocument.Included[0].Id.Should().Be(blog.Posts[1].StringId);
-    }
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-    [Fact]
-    public async Task Can_filter_in_scope_of_OneToMany_relationship_on_secondary_endpoint()
-    {
-        // Arrange
-        Blog blog = _fakers.Blog.Generate();
-        blog.Owner = _fakers.WebAccount.Generate();
-        blog.Owner.Posts = _fakers.BlogPost.Generate(2);
-        blog.Owner.Posts[0].Caption = "One";
-        blog.Owner.Posts[1].Caption = "Two";
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(blogs[1].StringId);
+        }
+
+        [Fact]
+        public async Task Can_filter_in_scope_of_OneToMany_relationship()
         {
-            dbContext.Blogs.Add(blog);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Blog blog = _fakers.Blog.Generate();
+            blog.Posts = _fakers.BlogPost.Generate(2);
+            blog.Posts[0].Caption = "One";
+            blog.Posts[1].Caption = "Two";
 
-        string route = $"/blogs/{blog.StringId}/owner?include=posts&filter[posts]=equals(caption,'Two')";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<Blog>();
+                dbContext.Blogs.Add(blog);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/blogs?include=posts&filter[posts]=equals(caption,'Two')";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.SingleValue.ShouldNotBeNull();
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        responseDocument.Included.ShouldHaveCount(1);
-        responseDocument.Included[0].Id.Should().Be(blog.Owner.Posts[1].StringId);
-    }
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
 
-    [Fact]
-    public async Task Can_filter_in_scope_of_ManyToMany_relationship()
-    {
-        // Arrange
-        List<BlogPost> posts = _fakers.BlogPost.Generate(2);
+            responseDocument.Included.ShouldHaveCount(1);
+            responseDocument.Included[0].Id.Should().Be(blog.Posts[1].StringId);
+        }
 
-        posts[0].Labels = _fakers.Label.Generate(1).ToHashSet();
-        posts[0].Labels.ElementAt(0).Name = "Cold";
-
-        posts[1].Labels = _fakers.Label.Generate(1).ToHashSet();
-        posts[1].Labels.ElementAt(0).Name = "Hot";
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_in_scope_of_OneToMany_relationship_on_secondary_endpoint()
         {
-            await dbContext.ClearTableAsync<BlogPost>();
-            dbContext.Posts.AddRange(posts);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Blog blog = _fakers.Blog.Generate();
+            blog.Owner = _fakers.WebAccount.Generate();
+            blog.Owner.Posts = _fakers.BlogPost.Generate(2);
+            blog.Owner.Posts[0].Caption = "One";
+            blog.Owner.Posts[1].Caption = "Two";
 
-        const string route = "/blogPosts?include=labels&filter[labels]=equals(name,'Hot')";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Blogs.Add(blog);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            string route = $"/blogs/{blog.StringId}/owner?include=posts&filter[posts]=equals(caption,'Two')";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(2);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        responseDocument.Included.ShouldHaveCount(1);
-        responseDocument.Included[0].Id.Should().Be(posts[1].Labels.First().StringId);
-    }
+            responseDocument.Data.SingleValue.ShouldNotBeNull();
 
-    [Fact]
-    public async Task Can_filter_in_scope_of_relationship_chain()
-    {
-        // Arrange
-        Blog blog = _fakers.Blog.Generate();
-        blog.Owner = _fakers.WebAccount.Generate();
-        blog.Owner.Posts = _fakers.BlogPost.Generate(2);
-        blog.Owner.Posts[0].Caption = "One";
-        blog.Owner.Posts[1].Caption = "Two";
+            responseDocument.Included.ShouldHaveCount(1);
+            responseDocument.Included[0].Id.Should().Be(blog.Owner.Posts[1].StringId);
+        }
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_in_scope_of_ManyToMany_relationship()
         {
-            await dbContext.ClearTableAsync<Blog>();
-            dbContext.Blogs.Add(blog);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            List<BlogPost> posts = _fakers.BlogPost.Generate(2);
 
-        const string route = "/blogs?include=owner.posts&filter[owner.posts]=equals(caption,'Two')";
+            posts[0].Labels = _fakers.Label.Generate(1).ToHashSet();
+            posts[0].Labels.ElementAt(0).Name = "Cold";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            posts[1].Labels = _fakers.Label.Generate(1).ToHashSet();
+            posts[1].Labels.ElementAt(0).Name = "Hot";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<BlogPost>();
+                dbContext.Posts.AddRange(posts);
+                await dbContext.SaveChangesAsync();
+            });
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            const string route = "/blogPosts?include=labels&filter[labels]=equals(name,'Hot')";
 
-        responseDocument.Included.ShouldHaveCount(2);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Included[0].Type.Should().Be("webAccounts");
-        responseDocument.Included[0].Id.Should().Be(blog.Owner.StringId);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        responseDocument.Included[1].Type.Should().Be("blogPosts");
-        responseDocument.Included[1].Id.Should().Be(blog.Owner.Posts[1].StringId);
-    }
+            responseDocument.Data.ManyValue.ShouldHaveCount(2);
 
-    [Fact]
-    public async Task Can_filter_in_same_scope_multiple_times()
-    {
-        // Arrange
-        List<BlogPost> posts = _fakers.BlogPost.Generate(3);
-        posts[0].Caption = "One";
-        posts[1].Caption = "Two";
-        posts[2].Caption = "Three";
+            responseDocument.Included.ShouldHaveCount(1);
+            responseDocument.Included[0].Id.Should().Be(posts[1].Labels.First().StringId);
+        }
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_in_scope_of_relationship_chain()
         {
-            await dbContext.ClearTableAsync<BlogPost>();
-            dbContext.Posts.AddRange(posts);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Blog blog = _fakers.Blog.Generate();
+            blog.Owner = _fakers.WebAccount.Generate();
+            blog.Owner.Posts = _fakers.BlogPost.Generate(2);
+            blog.Owner.Posts[0].Caption = "One";
+            blog.Owner.Posts[1].Caption = "Two";
 
-        const string route = "/blogPosts?filter=equals(caption,'One')&filter=equals(caption,'Three')";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<Blog>();
+                dbContext.Blogs.Add(blog);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/blogs?include=owner.posts&filter[owner.posts]=equals(caption,'Two')";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(2);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(posts[0].StringId);
-        responseDocument.Data.ManyValue[1].Id.Should().Be(posts[2].StringId);
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-    [Fact]
-    public async Task Can_filter_in_same_scope_multiple_times_using_legacy_notation()
-    {
-        // Arrange
-        var options = (JsonApiOptions)_testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
-        options.EnableLegacyFilterNotation = true;
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
 
-        List<BlogPost> posts = _fakers.BlogPost.Generate(3);
-        posts[0].Author = _fakers.WebAccount.Generate();
-        posts[1].Author = _fakers.WebAccount.Generate();
-        posts[2].Author = _fakers.WebAccount.Generate();
+            responseDocument.Included.ShouldHaveCount(2);
 
-        posts[0].Author!.UserName = "Joe";
-        posts[0].Author!.DisplayName = "Smith";
+            responseDocument.Included[0].Type.Should().Be("webAccounts");
+            responseDocument.Included[0].Id.Should().Be(blog.Owner.StringId);
 
-        posts[1].Author!.UserName = "John";
-        posts[1].Author!.DisplayName = "Doe";
+            responseDocument.Included[1].Type.Should().Be("blogPosts");
+            responseDocument.Included[1].Id.Should().Be(blog.Owner.Posts[1].StringId);
+        }
 
-        posts[2].Author!.UserName = "Jack";
-        posts[2].Author!.DisplayName = "Miller";
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_in_same_scope_multiple_times()
         {
-            await dbContext.ClearTableAsync<BlogPost>();
-            dbContext.Posts.AddRange(posts);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            List<BlogPost> posts = _fakers.BlogPost.Generate(3);
+            posts[0].Caption = "One";
+            posts[1].Caption = "Two";
+            posts[2].Caption = "Three";
 
-        const string route = "/blogPosts?filter[author.userName]=John&filter[author.displayName]=Smith";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<BlogPost>();
+                dbContext.Posts.AddRange(posts);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/blogPosts?filter=equals(caption,'One')&filter=equals(caption,'Three')";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(2);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(posts[0].StringId);
-        responseDocument.Data.ManyValue[1].Id.Should().Be(posts[1].StringId);
-    }
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-    [Fact]
-    public async Task Can_filter_in_multiple_scopes()
-    {
-        // Arrange
-        List<Blog> blogs = _fakers.Blog.Generate(2);
-        blogs[1].Title = "Technology";
-        blogs[1].Owner = _fakers.WebAccount.Generate();
-        blogs[1].Owner!.UserName = "Smith";
-        blogs[1].Owner!.Posts = _fakers.BlogPost.Generate(2);
-        blogs[1].Owner!.Posts[0].Caption = "One";
-        blogs[1].Owner!.Posts[1].Caption = "Two";
-        blogs[1].Owner!.Posts[1].Comments = _fakers.Comment.Generate(2).ToHashSet();
-        blogs[1].Owner!.Posts[1].Comments.ElementAt(0).CreatedAt = 1.January(2000).AsUtc();
-        blogs[1].Owner!.Posts[1].Comments.ElementAt(1).CreatedAt = 10.January(2010).AsUtc();
+            responseDocument.Data.ManyValue.ShouldHaveCount(2);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(posts[0].StringId);
+            responseDocument.Data.ManyValue[1].Id.Should().Be(posts[2].StringId);
+        }
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Can_filter_in_same_scope_multiple_times_using_legacy_notation()
         {
-            await dbContext.ClearTableAsync<Blog>();
-            dbContext.Blogs.AddRange(blogs);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            var options = (JsonApiOptions)_testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
+            options.EnableLegacyFilterNotation = true;
 
-        // @formatter:keep_existing_linebreaks true
+            List<BlogPost> posts = _fakers.BlogPost.Generate(3);
+            posts[0].Author = _fakers.WebAccount.Generate();
+            posts[1].Author = _fakers.WebAccount.Generate();
+            posts[2].Author = _fakers.WebAccount.Generate();
 
-        const string route = "/blogs?include=owner.posts.comments&" +
-            "filter=and(equals(title,'Technology'),has(owner.posts),equals(owner.userName,'Smith'))&" +
-            "filter[owner.posts]=equals(caption,'Two')&" +
-            "filter[owner.posts.comments]=greaterThan(createdAt,'2005-05-05Z')";
+            posts[0].Author!.UserName = "Joe";
+            posts[0].Author!.DisplayName = "Smith";
 
-        // @formatter:keep_existing_linebreaks restore
+            posts[1].Author!.UserName = "John";
+            posts[1].Author!.DisplayName = "Doe";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            posts[2].Author!.UserName = "Jack";
+            posts[2].Author!.DisplayName = "Miller";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<BlogPost>();
+                dbContext.Posts.AddRange(posts);
+                await dbContext.SaveChangesAsync();
+            });
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(blogs[1].StringId);
+            const string route = "/blogPosts?filter[author.userName]=John&filter[author.displayName]=Smith";
 
-        responseDocument.Included.ShouldHaveCount(3);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Included[0].Type.Should().Be("webAccounts");
-        responseDocument.Included[0].Id.Should().Be(blogs[1].Owner!.StringId);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        responseDocument.Included[1].Type.Should().Be("blogPosts");
-        responseDocument.Included[1].Id.Should().Be(blogs[1].Owner!.Posts[1].StringId);
+            responseDocument.Data.ManyValue.ShouldHaveCount(2);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(posts[0].StringId);
+            responseDocument.Data.ManyValue[1].Id.Should().Be(posts[1].StringId);
+        }
 
-        responseDocument.Included[2].Type.Should().Be("comments");
-        responseDocument.Included[2].Id.Should().Be(blogs[1].Owner!.Posts[1].Comments.ElementAt(1).StringId);
+        [Fact]
+        public async Task Can_filter_in_multiple_scopes()
+        {
+            // Arrange
+            List<Blog> blogs = _fakers.Blog.Generate(2);
+            blogs[1].Title = "Technology";
+            blogs[1].Owner = _fakers.WebAccount.Generate();
+            blogs[1].Owner!.UserName = "Smith";
+            blogs[1].Owner!.Posts = _fakers.BlogPost.Generate(2);
+            blogs[1].Owner!.Posts[0].Caption = "One";
+            blogs[1].Owner!.Posts[1].Caption = "Two";
+            blogs[1].Owner!.Posts[1].Comments = _fakers.Comment.Generate(2).ToHashSet();
+            blogs[1].Owner!.Posts[1].Comments.ElementAt(0).CreatedAt = 1.January(2000).AsUtc();
+            blogs[1].Owner!.Posts[1].Comments.ElementAt(1).CreatedAt = 10.January(2010).AsUtc();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<Blog>();
+                dbContext.Blogs.AddRange(blogs);
+                await dbContext.SaveChangesAsync();
+            });
+
+            // @formatter:keep_existing_linebreaks true
+
+            const string route = "/blogs?include=owner.posts.comments&" +
+                "filter=and(equals(title,'Technology'),has(owner.posts),equals(owner.userName,'Smith'))&" +
+                "filter[owner.posts]=equals(caption,'Two')&" +
+                "filter[owner.posts.comments]=greaterThan(createdAt,'2005-05-05Z')";
+
+            // @formatter:keep_existing_linebreaks restore
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(blogs[1].StringId);
+
+            responseDocument.Included.ShouldHaveCount(3);
+
+            responseDocument.Included[0].Type.Should().Be("webAccounts");
+            responseDocument.Included[0].Id.Should().Be(blogs[1].Owner!.StringId);
+
+            responseDocument.Included[1].Type.Should().Be("blogPosts");
+            responseDocument.Included[1].Id.Should().Be(blogs[1].Owner!.Posts[1].StringId);
+
+            responseDocument.Included[2].Type.Should().Be("comments");
+            responseDocument.Included[2].Id.Should().Be(blogs[1].Owner!.Posts[1].Comments.ElementAt(1).StringId);
+        }
     }
 }

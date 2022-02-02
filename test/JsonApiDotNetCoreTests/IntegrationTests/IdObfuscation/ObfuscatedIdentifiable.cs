@@ -1,18 +1,19 @@
 using JsonApiDotNetCore.Resources;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.IdObfuscation;
-
-public abstract class ObfuscatedIdentifiable : Identifiable<int>
+namespace JsonApiDotNetCoreTests.IntegrationTests.IdObfuscation
 {
-    private static readonly HexadecimalCodec Codec = new();
-
-    protected override string? GetStringId(int value)
+    public abstract class ObfuscatedIdentifiable : Identifiable<int>
     {
-        return value == default ? null : Codec.Encode(value);
-    }
+        private static readonly HexadecimalCodec Codec = new();
 
-    protected override int GetTypedId(string? value)
-    {
-        return value == null ? default : Codec.Decode(value);
+        protected override string? GetStringId(int value)
+        {
+            return value == default ? null : Codec.Encode(value);
+        }
+
+        protected override int GetTypedId(string? value)
+        {
+            return value == null ? default : Codec.Decode(value);
+        }
     }
 }

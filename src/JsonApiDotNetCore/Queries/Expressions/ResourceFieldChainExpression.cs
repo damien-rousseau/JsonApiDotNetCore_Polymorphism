@@ -2,66 +2,67 @@ using System.Collections.Immutable;
 using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Expressions;
-
-/// <summary>
-/// Represents a chain of fields (relationships and attributes), resulting from text such as: articles.revisions.author
-/// </summary>
-[PublicAPI]
-public class ResourceFieldChainExpression : IdentifierExpression
+namespace JsonApiDotNetCore.Queries.Expressions
 {
-    public IImmutableList<ResourceFieldAttribute> Fields { get; }
-
-    public ResourceFieldChainExpression(ResourceFieldAttribute field)
+    /// <summary>
+    /// Represents a chain of fields (relationships and attributes), resulting from text such as: articles.revisions.author
+    /// </summary>
+    [PublicAPI]
+    public class ResourceFieldChainExpression : IdentifierExpression
     {
-        ArgumentGuard.NotNull(field, nameof(field));
+        public IImmutableList<ResourceFieldAttribute> Fields { get; }
 
-        Fields = ImmutableArray.Create(field);
-    }
-
-    public ResourceFieldChainExpression(IImmutableList<ResourceFieldAttribute> fields)
-    {
-        ArgumentGuard.NotNullNorEmpty(fields, nameof(fields));
-
-        Fields = fields;
-    }
-
-    public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
-    {
-        return visitor.VisitResourceFieldChain(this, argument);
-    }
-
-    public override string ToString()
-    {
-        return string.Join(".", Fields.Select(field => field.PublicName));
-    }
-
-    public override bool Equals(object? obj)
-    {
-        if (ReferenceEquals(this, obj))
+        public ResourceFieldChainExpression(ResourceFieldAttribute field)
         {
-            return true;
+            ArgumentGuard.NotNull(field, nameof(field));
+
+            Fields = ImmutableArray.Create(field);
         }
 
-        if (obj is null || GetType() != obj.GetType())
+        public ResourceFieldChainExpression(IImmutableList<ResourceFieldAttribute> fields)
         {
-            return false;
+            ArgumentGuard.NotNullNorEmpty(fields, nameof(fields));
+
+            Fields = fields;
         }
 
-        var other = (ResourceFieldChainExpression)obj;
-
-        return Fields.SequenceEqual(other.Fields);
-    }
-
-    public override int GetHashCode()
-    {
-        var hashCode = new HashCode();
-
-        foreach (ResourceFieldAttribute field in Fields)
+        public override TResult Accept<TArgument, TResult>(QueryExpressionVisitor<TArgument, TResult> visitor, TArgument argument)
         {
-            hashCode.Add(field);
+            return visitor.VisitResourceFieldChain(this, argument);
         }
 
-        return hashCode.ToHashCode();
+        public override string ToString()
+        {
+            return string.Join(".", Fields.Select(field => field.PublicName));
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            if (obj is null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            var other = (ResourceFieldChainExpression)obj;
+
+            return Fields.SequenceEqual(other.Fields);
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = new HashCode();
+
+            foreach (ResourceFieldAttribute field in Fields)
+            {
+                hashCode.Add(field);
+            }
+
+            return hashCode.ToHashCode();
+        }
     }
 }

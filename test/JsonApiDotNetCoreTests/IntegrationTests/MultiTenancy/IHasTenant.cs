@@ -1,9 +1,10 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.MultiTenancy;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public interface IHasTenant
+namespace JsonApiDotNetCoreTests.IntegrationTests.MultiTenancy
 {
-    Guid TenantId { get; set; }
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public interface IHasTenant
+    {
+        Guid TenantId { get; set; }
+    }
 }

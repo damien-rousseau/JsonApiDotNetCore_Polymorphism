@@ -6,90 +6,91 @@ using Microsoft.Extensions.DependencyInjection;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.QueryStrings;
-
-public sealed class QueryStringTests : IClassFixture<IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext>>
+namespace JsonApiDotNetCoreTests.IntegrationTests.QueryStrings
 {
-    private readonly IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext> _testContext;
-
-    public QueryStringTests(IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext> testContext)
+    public sealed class QueryStringTests : IClassFixture<IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext>>
     {
-        _testContext = testContext;
+        private readonly IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext> _testContext;
 
-        testContext.UseController<CalendarsController>();
-    }
+        public QueryStringTests(IntegrationTestContext<TestableStartup<QueryStringDbContext>, QueryStringDbContext> testContext)
+        {
+            _testContext = testContext;
 
-    [Fact]
-    public async Task Cannot_use_unknown_query_string_parameter()
-    {
-        // Arrange
-        var options = (JsonApiOptions)_testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
-        options.AllowUnknownQueryStringParameters = false;
+            testContext.UseController<CalendarsController>();
+        }
 
-        const string route = "/calendars?foo=bar";
+        [Fact]
+        public async Task Cannot_use_unknown_query_string_parameter()
+        {
+            // Arrange
+            var options = (JsonApiOptions)_testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
+            options.AllowUnknownQueryStringParameters = false;
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/calendars?foo=bar";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.BadRequest);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.BadRequest);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        error.Title.Should().Be("Unknown query string parameter.");
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        error.Detail.Should().Be("Query string parameter 'foo' is unknown. " +
-            "Set 'AllowUnknownQueryStringParameters' to 'true' in options to ignore unknown parameters.");
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            error.Title.Should().Be("Unknown query string parameter.");
 
-        error.Source.ShouldNotBeNull();
-        error.Source.Parameter.Should().Be("foo");
-    }
+            error.Detail.Should().Be("Query string parameter 'foo' is unknown. " +
+                "Set 'AllowUnknownQueryStringParameters' to 'true' in options to ignore unknown parameters.");
 
-    [Fact]
-    public async Task Can_use_unknown_query_string_parameter()
-    {
-        // Arrange
-        var options = (JsonApiOptions)_testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
-        options.AllowUnknownQueryStringParameters = true;
+            error.Source.ShouldNotBeNull();
+            error.Source.Parameter.Should().Be("foo");
+        }
 
-        const string route = "/calendars?foo=bar";
+        [Fact]
+        public async Task Can_use_unknown_query_string_parameter()
+        {
+            // Arrange
+            var options = (JsonApiOptions)_testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
+            options.AllowUnknownQueryStringParameters = true;
 
-        // Act
-        (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<Document>(route);
+            const string route = "/calendars?foo=bar";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-    }
+            // Act
+            (HttpResponseMessage httpResponse, _) = await _testContext.ExecuteGetAsync<Document>(route);
 
-    [Theory]
-    [InlineData("include")]
-    [InlineData("filter")]
-    [InlineData("sort")]
-    [InlineData("page[size]")]
-    [InlineData("page[number]")]
-    public async Task Cannot_use_empty_query_string_parameter_value(string parameterName)
-    {
-        // Arrange
-        var options = (JsonApiOptions)_testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
-        options.AllowUnknownQueryStringParameters = false;
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+        }
 
-        string route = $"calendars?{parameterName}=";
+        [Theory]
+        [InlineData("include")]
+        [InlineData("filter")]
+        [InlineData("sort")]
+        [InlineData("page[size]")]
+        [InlineData("page[number]")]
+        public async Task Cannot_use_empty_query_string_parameter_value(string parameterName)
+        {
+            // Arrange
+            var options = (JsonApiOptions)_testContext.Factory.Services.GetRequiredService<IJsonApiOptions>();
+            options.AllowUnknownQueryStringParameters = false;
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            string route = $"calendars?{parameterName}=";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.BadRequest);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.BadRequest);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        error.Title.Should().Be("Missing query string parameter value.");
-        error.Detail.Should().Be($"Missing value for '{parameterName}' query string parameter.");
-        error.Source.ShouldNotBeNull();
-        error.Source.Parameter.Should().Be(parameterName);
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            error.Title.Should().Be("Missing query string parameter value.");
+            error.Detail.Should().Be($"Missing value for '{parameterName}' query string parameter.");
+            error.Source.ShouldNotBeNull();
+            error.Source.Parameter.Should().Be(parameterName);
+        }
     }
 }

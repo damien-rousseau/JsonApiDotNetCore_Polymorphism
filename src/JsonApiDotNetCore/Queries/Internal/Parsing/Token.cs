@@ -1,21 +1,22 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Internal.Parsing;
-
-[PublicAPI]
-public sealed class Token
+namespace JsonApiDotNetCore.Queries.Internal.Parsing
 {
-    public TokenKind Kind { get; }
-    public string? Value { get; }
-
-    public Token(TokenKind kind, string? value = null)
+    [PublicAPI]
+    public sealed class Token
     {
-        Kind = kind;
-        Value = value;
-    }
+        public TokenKind Kind { get; }
+        public string? Value { get; }
 
-    public override string ToString()
-    {
-        return Value == null ? Kind.ToString() : $"{Kind}: {Value}";
+        public Token(TokenKind kind, string? value = null)
+        {
+            Kind = kind;
+            Value = value;
+        }
+
+        public override string ToString()
+        {
+            return Value == null ? Kind.ToString() : $"{Kind}: {Value}";
+        }
     }
 }

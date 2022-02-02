@@ -7,50 +7,51 @@ using JsonApiDotNetCore.Resources;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace JsonApiDotNetCore.Middleware;
-
-public sealed class JsonApiOutputFormatterDecorator : IJsonApiOutputFormatter
+namespace JsonApiDotNetCore.Middleware
 {
-    private readonly IJsonApiOutputFormatter _jsonApiOutputFormatter;
-
-    public JsonApiOutputFormatterDecorator(IJsonApiOutputFormatter jsonApiOutputFormatter)
+    public sealed class JsonApiOutputFormatterDecorator : IJsonApiOutputFormatter
     {
-        _jsonApiOutputFormatter = jsonApiOutputFormatter ?? throw new NotImplementedException(nameof(jsonApiOutputFormatter));
-    }
+        private readonly IJsonApiOutputFormatter _jsonApiOutputFormatter;
 
-    /// <inheritdoc />
-    public bool CanWriteResult(OutputFormatterCanWriteContext context)
-    {
-        return context == null ? throw new ArgumentException(nameof(context)) : _jsonApiOutputFormatter.CanWriteResult(context);
-    }
-
-    /// <inheritdoc />
-    public async Task WriteAsync(OutputFormatterWriteContext context)
-    {
-        if (context == null)
+        public JsonApiOutputFormatterDecorator(IJsonApiOutputFormatter jsonApiOutputFormatter)
         {
-            throw new ArgumentException(nameof(context));
+            _jsonApiOutputFormatter = jsonApiOutputFormatter ?? throw new NotImplementedException(nameof(jsonApiOutputFormatter));
         }
 
-        if (context.Object != null)
+        /// <inheritdoc />
+        public bool CanWriteResult(OutputFormatterCanWriteContext context)
         {
-            var jsonApiRequest = context.HttpContext.RequestServices.GetRequiredService<IJsonApiRequest>();
-            var resourceGraph = context.HttpContext.RequestServices.GetRequiredService<IResourceGraph>();
-            var queryStringReader = context.HttpContext.RequestServices.GetRequiredService<IQueryStringReader>();
-            var queryLayerComposer = context.HttpContext.RequestServices.GetRequiredService<IQueryLayerComposer>();
+            return context == null ? throw new ArgumentException(nameof(context)) : _jsonApiOutputFormatter.CanWriteResult(context);
+        }
 
-            var type = context.Object is IEnumerable<IIdentifiable> resources ? resources.GetType().GetGenericArguments().Single() : context.Object.GetType();
-
-            if (jsonApiRequest.PrimaryResourceType!.ClrType != type)
+        /// <inheritdoc />
+        public async Task WriteAsync(OutputFormatterWriteContext context)
+        {
+            if (context == null)
             {
-                ((JsonApiRequest)jsonApiRequest).PrimaryResourceType = resourceGraph.GetResourceType(type);
-
-                var disableQueryStringAttribute = GetType().GetCustomAttribute<DisableQueryStringAttribute>(true);
-                queryStringReader.ReadAll(disableQueryStringAttribute);
-                queryLayerComposer.ComposeFromConstraints(jsonApiRequest.PrimaryResourceType!);
+                throw new ArgumentException(nameof(context));
             }
-        }
 
-        await _jsonApiOutputFormatter.WriteAsync(context);
+            if (context.Object != null)
+            {
+                var jsonApiRequest = context.HttpContext.RequestServices.GetRequiredService<IJsonApiRequest>();
+                var resourceGraph = context.HttpContext.RequestServices.GetRequiredService<IResourceGraph>();
+                var queryStringReader = context.HttpContext.RequestServices.GetRequiredService<IQueryStringReader>();
+                var queryLayerComposer = context.HttpContext.RequestServices.GetRequiredService<IQueryLayerComposer>();
+
+                var type = context.Object is IEnumerable<IIdentifiable> resources ? resources.GetType().GetGenericArguments().Single() : context.Object.GetType();
+
+                if (jsonApiRequest.PrimaryResourceType!.ClrType != type)
+                {
+                    ((JsonApiRequest)jsonApiRequest).PrimaryResourceType = resourceGraph.GetResourceType(type);
+
+                    var disableQueryStringAttribute = GetType().GetCustomAttribute<DisableQueryStringAttribute>(true);
+                    queryStringReader.ReadAll(disableQueryStringAttribute);
+                    queryLayerComposer.ComposeFromConstraints(jsonApiRequest.PrimaryResourceType!);
+                }
+            }
+
+            await _jsonApiOutputFormatter.WriteAsync(context);
+        }
     }
 }

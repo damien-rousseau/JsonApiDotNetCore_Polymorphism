@@ -3,50 +3,51 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Serialization.Objects;
 using Microsoft.AspNetCore.Mvc;
 
-namespace JsonApiDotNetCore.Errors;
-
-/// <summary>
-/// The error that is thrown when an <see cref="IActionResult" /> with non-success status is returned from a controller method.
-/// </summary>
-[PublicAPI]
-public sealed class UnsuccessfulActionResultException : JsonApiException
+namespace JsonApiDotNetCore.Errors
 {
-    public UnsuccessfulActionResultException(HttpStatusCode status)
-        : base(new ErrorObject(status)
-        {
-            Title = status.ToString()
-        })
+    /// <summary>
+    /// The error that is thrown when an <see cref="IActionResult" /> with non-success status is returned from a controller method.
+    /// </summary>
+    [PublicAPI]
+    public sealed class UnsuccessfulActionResultException : JsonApiException
     {
-    }
-
-    public UnsuccessfulActionResultException(ProblemDetails problemDetails)
-        : base(ToError(problemDetails))
-    {
-    }
-
-    private static ErrorObject ToError(ProblemDetails problemDetails)
-    {
-        ArgumentGuard.NotNull(problemDetails, nameof(problemDetails));
-
-        HttpStatusCode status = problemDetails.Status != null ? (HttpStatusCode)problemDetails.Status.Value : HttpStatusCode.InternalServerError;
-
-        var error = new ErrorObject(status)
+        public UnsuccessfulActionResultException(HttpStatusCode status)
+            : base(new ErrorObject(status)
+            {
+                Title = status.ToString()
+            })
         {
-            Title = problemDetails.Title,
-            Detail = problemDetails.Detail
-        };
-
-        if (!string.IsNullOrWhiteSpace(problemDetails.Instance))
-        {
-            error.Id = problemDetails.Instance;
         }
 
-        if (!string.IsNullOrWhiteSpace(problemDetails.Type))
+        public UnsuccessfulActionResultException(ProblemDetails problemDetails)
+            : base(ToError(problemDetails))
         {
-            error.Links ??= new ErrorLinks();
-            error.Links.About = problemDetails.Type;
         }
 
-        return error;
+        private static ErrorObject ToError(ProblemDetails problemDetails)
+        {
+            ArgumentGuard.NotNull(problemDetails, nameof(problemDetails));
+
+            HttpStatusCode status = problemDetails.Status != null ? (HttpStatusCode)problemDetails.Status.Value : HttpStatusCode.InternalServerError;
+
+            var error = new ErrorObject(status)
+            {
+                Title = problemDetails.Title,
+                Detail = problemDetails.Detail
+            };
+
+            if (!string.IsNullOrWhiteSpace(problemDetails.Instance))
+            {
+                error.Id = problemDetails.Instance;
+            }
+
+            if (!string.IsNullOrWhiteSpace(problemDetails.Type))
+            {
+                error.Links ??= new ErrorLinks();
+                error.Links.About = problemDetails.Type;
+            }
+
+            return error;
+        }
     }
 }

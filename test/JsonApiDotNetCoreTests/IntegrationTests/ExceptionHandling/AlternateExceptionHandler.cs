@@ -3,35 +3,36 @@ using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Serialization.Objects;
 using Microsoft.Extensions.Logging;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.ExceptionHandling;
-
-public sealed class AlternateExceptionHandler : ExceptionHandler
+namespace JsonApiDotNetCoreTests.IntegrationTests.ExceptionHandling
 {
-    public AlternateExceptionHandler(ILoggerFactory loggerFactory, IJsonApiOptions options)
-        : base(loggerFactory, options)
+    public sealed class AlternateExceptionHandler : ExceptionHandler
     {
-    }
-
-    protected override LogLevel GetLogLevel(Exception exception)
-    {
-        if (exception is ConsumerArticleIsNoLongerAvailableException)
+        public AlternateExceptionHandler(ILoggerFactory loggerFactory, IJsonApiOptions options)
+            : base(loggerFactory, options)
         {
-            return LogLevel.Warning;
         }
 
-        return base.GetLogLevel(exception);
-    }
-
-    protected override IReadOnlyList<ErrorObject> CreateErrorResponse(Exception exception)
-    {
-        if (exception is ConsumerArticleIsNoLongerAvailableException articleException)
+        protected override LogLevel GetLogLevel(Exception exception)
         {
-            articleException.Errors[0].Meta = new Dictionary<string, object?>
+            if (exception is ConsumerArticleIsNoLongerAvailableException)
             {
-                ["Support"] = $"Please contact us for info about similar articles at {articleException.SupportEmailAddress}."
-            };
+                return LogLevel.Warning;
+            }
+
+            return base.GetLogLevel(exception);
         }
 
-        return base.CreateErrorResponse(exception);
+        protected override IReadOnlyList<ErrorObject> CreateErrorResponse(Exception exception)
+        {
+            if (exception is ConsumerArticleIsNoLongerAvailableException articleException)
+            {
+                articleException.Errors[0].Meta = new Dictionary<string, object?>
+                {
+                    ["Support"] = $"Please contact us for info about similar articles at {articleException.SupportEmailAddress}."
+                };
+            }
+
+            return base.CreateErrorResponse(exception);
+        }
     }
 }

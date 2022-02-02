@@ -1,14 +1,15 @@
 using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.IdObfuscation;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public sealed class BankAccount : ObfuscatedIdentifiable
+namespace JsonApiDotNetCoreTests.IntegrationTests.IdObfuscation
 {
-    [Attr]
-    public string Iban { get; set; } = null!;
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public sealed class BankAccount : ObfuscatedIdentifiable
+    {
+        [Attr]
+        public string Iban { get; set; } = null!;
 
-    [HasMany]
-    public IList<DebitCard> Cards { get; set; } = new List<DebitCard>();
+        [HasMany]
+        public IList<DebitCard> Cards { get; set; } = new List<DebitCard>();
+    }
 }

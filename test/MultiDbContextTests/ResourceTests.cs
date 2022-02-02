@@ -9,60 +9,61 @@ using MultiDbContextExample.Models;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace MultiDbContextTests;
-
-public sealed class ResourceTests : IntegrationTest, IClassFixture<WebApplicationFactory<ResourceA>>
+namespace MultiDbContextTests
 {
-    private readonly WebApplicationFactory<ResourceA> _factory;
-
-    protected override JsonSerializerOptions SerializerOptions
+    public sealed class ResourceTests : IntegrationTest, IClassFixture<WebApplicationFactory<ResourceA>>
     {
-        get
+        private readonly WebApplicationFactory<ResourceA> _factory;
+
+        protected override JsonSerializerOptions SerializerOptions
         {
-            var options = _factory.Services.GetRequiredService<IJsonApiOptions>();
-            return options.SerializerOptions;
+            get
+            {
+                var options = _factory.Services.GetRequiredService<IJsonApiOptions>();
+                return options.SerializerOptions;
+            }
         }
-    }
 
-    public ResourceTests(WebApplicationFactory<ResourceA> factory)
-    {
-        _factory = factory;
-    }
+        public ResourceTests(WebApplicationFactory<ResourceA> factory)
+        {
+            _factory = factory;
+        }
 
-    [Fact]
-    public async Task Can_get_ResourceAs()
-    {
-        // Arrange
-        const string route = "/resourceAs";
+        [Fact]
+        public async Task Can_get_ResourceAs()
+        {
+            // Arrange
+            const string route = "/resourceAs";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await ExecuteGetAsync<Document>(route);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await ExecuteGetAsync<Document>(route);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Attributes.ShouldContainKey("nameA").With(value => value.Should().Be("SampleA"));
-    }
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Attributes.ShouldContainKey("nameA").With(value => value.Should().Be("SampleA"));
+        }
 
-    [Fact]
-    public async Task Can_get_ResourceBs()
-    {
-        // Arrange
-        const string route = "/resourceBs";
+        [Fact]
+        public async Task Can_get_ResourceBs()
+        {
+            // Arrange
+            const string route = "/resourceBs";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await ExecuteGetAsync<Document>(route);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await ExecuteGetAsync<Document>(route);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Attributes.ShouldContainKey("nameB").With(value => value.Should().Be("SampleB"));
-    }
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Attributes.ShouldContainKey("nameB").With(value => value.Should().Be("SampleB"));
+        }
 
-    protected override HttpClient CreateClient()
-    {
-        return _factory.CreateClient();
+        protected override HttpClient CreateClient()
+        {
+            return _factory.CreateClient();
+        }
     }
 }

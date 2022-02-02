@@ -1,12 +1,13 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Internal.Parsing;
-
-[PublicAPI]
-public sealed class QueryParseException : Exception
+namespace JsonApiDotNetCore.Queries.Internal.Parsing
 {
-    public QueryParseException(string message)
-        : base(message)
+    [PublicAPI]
+    public sealed class QueryParseException : Exception
     {
+        public QueryParseException(string message)
+            : base(message)
+        {
+        }
     }
 }

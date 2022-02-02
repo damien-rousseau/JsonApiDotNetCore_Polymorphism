@@ -5,38 +5,39 @@ using JsonApiDotNetCore.Resources;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Primitives;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations.QueryStrings;
-
-[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-public sealed class MusicTrackReleaseDefinition : JsonApiResourceDefinition<MusicTrack, Guid>
+namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations.QueryStrings
 {
-    private readonly ISystemClock _systemClock;
-
-    public MusicTrackReleaseDefinition(IResourceGraph resourceGraph, ISystemClock systemClock)
-        : base(resourceGraph)
+    [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+    public sealed class MusicTrackReleaseDefinition : JsonApiResourceDefinition<MusicTrack, Guid>
     {
-        ArgumentGuard.NotNull(systemClock, nameof(systemClock));
+        private readonly ISystemClock _systemClock;
 
-        _systemClock = systemClock;
-    }
-
-    public override QueryStringParameterHandlers<MusicTrack> OnRegisterQueryableHandlersForQueryStringParameters()
-    {
-        return new QueryStringParameterHandlers<MusicTrack>
+        public MusicTrackReleaseDefinition(IResourceGraph resourceGraph, ISystemClock systemClock)
+            : base(resourceGraph)
         {
-            ["isRecentlyReleased"] = FilterOnRecentlyReleased
-        };
-    }
+            ArgumentGuard.NotNull(systemClock, nameof(systemClock));
 
-    private IQueryable<MusicTrack> FilterOnRecentlyReleased(IQueryable<MusicTrack> source, StringValues parameterValue)
-    {
-        IQueryable<MusicTrack> tracks = source;
-
-        if (bool.Parse(parameterValue))
-        {
-            tracks = tracks.Where(musicTrack => musicTrack.ReleasedAt < _systemClock.UtcNow && musicTrack.ReleasedAt > _systemClock.UtcNow.AddMonths(-3));
+            _systemClock = systemClock;
         }
 
-        return tracks;
+        public override QueryStringParameterHandlers<MusicTrack> OnRegisterQueryableHandlersForQueryStringParameters()
+        {
+            return new QueryStringParameterHandlers<MusicTrack>
+            {
+                ["isRecentlyReleased"] = FilterOnRecentlyReleased
+            };
+        }
+
+        private IQueryable<MusicTrack> FilterOnRecentlyReleased(IQueryable<MusicTrack> source, StringValues parameterValue)
+        {
+            IQueryable<MusicTrack> tracks = source;
+
+            if (bool.Parse(parameterValue))
+            {
+                tracks = tracks.Where(musicTrack => musicTrack.ReleasedAt < _systemClock.UtcNow && musicTrack.ReleasedAt > _systemClock.UtcNow.AddMonths(-3));
+            }
+
+            return tracks;
+        }
     }
 }

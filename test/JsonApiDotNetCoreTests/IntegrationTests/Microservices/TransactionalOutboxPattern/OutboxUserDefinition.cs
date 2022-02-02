@@ -4,28 +4,29 @@ using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages;
 using Microsoft.EntityFrameworkCore;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.TransactionalOutboxPattern;
-
-[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-public sealed class OutboxUserDefinition : MessagingUserDefinition
+namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.TransactionalOutboxPattern
 {
-    private readonly DbSet<OutgoingMessage> _outboxMessageSet;
-
-    public OutboxUserDefinition(IResourceGraph resourceGraph, OutboxDbContext dbContext, ResourceDefinitionHitCounter hitCounter)
-        : base(resourceGraph, dbContext.Users, hitCounter)
+    [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+    public sealed class OutboxUserDefinition : MessagingUserDefinition
     {
-        _outboxMessageSet = dbContext.OutboxMessages;
-    }
+        private readonly DbSet<OutgoingMessage> _outboxMessageSet;
 
-    public override async Task OnWritingAsync(DomainUser user, WriteOperationKind writeOperation, CancellationToken cancellationToken)
-    {
-        await base.OnWritingAsync(user, writeOperation, cancellationToken);
+        public OutboxUserDefinition(IResourceGraph resourceGraph, OutboxDbContext dbContext, ResourceDefinitionHitCounter hitCounter)
+            : base(resourceGraph, dbContext.Users, hitCounter)
+        {
+            _outboxMessageSet = dbContext.OutboxMessages;
+        }
 
-        await FinishWriteAsync(user, writeOperation, cancellationToken);
-    }
+        public override async Task OnWritingAsync(DomainUser user, WriteOperationKind writeOperation, CancellationToken cancellationToken)
+        {
+            await base.OnWritingAsync(user, writeOperation, cancellationToken);
 
-    protected override async Task FlushMessageAsync(OutgoingMessage message, CancellationToken cancellationToken)
-    {
-        await _outboxMessageSet.AddAsync(message, cancellationToken);
+            await FinishWriteAsync(user, writeOperation, cancellationToken);
+        }
+
+        protected override async Task FlushMessageAsync(OutgoingMessage message, CancellationToken cancellationToken)
+        {
+            await _outboxMessageSet.AddAsync(message, cancellationToken);
+        }
     }
 }

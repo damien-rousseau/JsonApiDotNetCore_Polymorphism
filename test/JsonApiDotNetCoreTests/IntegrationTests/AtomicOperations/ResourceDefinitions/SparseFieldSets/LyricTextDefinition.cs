@@ -2,25 +2,26 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Configuration;
 using JsonApiDotNetCore.Queries.Expressions;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations.ResourceDefinitions.SparseFieldSets;
-
-[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-public sealed class LyricTextDefinition : HitCountingResourceDefinition<Lyric, long>
+namespace JsonApiDotNetCoreTests.IntegrationTests.AtomicOperations.ResourceDefinitions.SparseFieldSets
 {
-    private readonly LyricPermissionProvider _lyricPermissionProvider;
-
-    protected override ResourceDefinitionExtensibilityPoints ExtensibilityPointsToTrack => ResourceDefinitionExtensibilityPoints.OnApplySparseFieldSet;
-
-    public LyricTextDefinition(IResourceGraph resourceGraph, LyricPermissionProvider lyricPermissionProvider, ResourceDefinitionHitCounter hitCounter)
-        : base(resourceGraph, hitCounter)
+    [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+    public sealed class LyricTextDefinition : HitCountingResourceDefinition<Lyric, long>
     {
-        _lyricPermissionProvider = lyricPermissionProvider;
-    }
+        private readonly LyricPermissionProvider _lyricPermissionProvider;
 
-    public override SparseFieldSetExpression? OnApplySparseFieldSet(SparseFieldSetExpression? existingSparseFieldSet)
-    {
-        base.OnApplySparseFieldSet(existingSparseFieldSet);
+        protected override ResourceDefinitionExtensibilityPoints ExtensibilityPointsToTrack => ResourceDefinitionExtensibilityPoints.OnApplySparseFieldSet;
 
-        return _lyricPermissionProvider.CanViewText ? existingSparseFieldSet : existingSparseFieldSet.Excluding<Lyric>(lyric => lyric.Text, ResourceGraph);
+        public LyricTextDefinition(IResourceGraph resourceGraph, LyricPermissionProvider lyricPermissionProvider, ResourceDefinitionHitCounter hitCounter)
+            : base(resourceGraph, hitCounter)
+        {
+            _lyricPermissionProvider = lyricPermissionProvider;
+        }
+
+        public override SparseFieldSetExpression? OnApplySparseFieldSet(SparseFieldSetExpression? existingSparseFieldSet)
+        {
+            base.OnApplySparseFieldSet(existingSparseFieldSet);
+
+            return _lyricPermissionProvider.CanViewText ? existingSparseFieldSet : existingSparseFieldSet.Excluding<Lyric>(lyric => lyric.Text, ResourceGraph);
+        }
     }
 }

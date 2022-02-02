@@ -1,16 +1,17 @@
 using JetBrains.Annotations;
 
-namespace SourceGeneratorDebugger.Controllers;
-
-// Workaround for https://youtrack.jetbrains.com/issue/RSRP-487028
-public partial class ArticlesController
+namespace SourceGeneratorDebugger.Controllers
 {
-}
-
-[PublicAPI]
-partial class ArticlesController
-{
-    public void ExtraMethod()
+    // Workaround for https://youtrack.jetbrains.com/issue/RSRP-487028
+    public partial class ArticlesController
     {
+    }
+
+    [PublicAPI]
+    partial class ArticlesController
+    {
+        public void ExtraMethod()
+        {
+        }
     }
 }

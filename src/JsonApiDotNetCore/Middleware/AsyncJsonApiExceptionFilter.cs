@@ -3,36 +3,37 @@ using JsonApiDotNetCore.Serialization.Objects;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace JsonApiDotNetCore.Middleware;
-
-/// <inheritdoc />
-[PublicAPI]
-public sealed class AsyncJsonApiExceptionFilter : IAsyncJsonApiExceptionFilter
+namespace JsonApiDotNetCore.Middleware
 {
-    private readonly IExceptionHandler _exceptionHandler;
-
-    public AsyncJsonApiExceptionFilter(IExceptionHandler exceptionHandler)
-    {
-        ArgumentGuard.NotNull(exceptionHandler, nameof(exceptionHandler));
-
-        _exceptionHandler = exceptionHandler;
-    }
-
     /// <inheritdoc />
-    public Task OnExceptionAsync(ExceptionContext context)
+    [PublicAPI]
+    public sealed class AsyncJsonApiExceptionFilter : IAsyncJsonApiExceptionFilter
     {
-        ArgumentGuard.NotNull(context, nameof(context));
+        private readonly IExceptionHandler _exceptionHandler;
 
-        if (context.HttpContext.IsJsonApiRequest())
+        public AsyncJsonApiExceptionFilter(IExceptionHandler exceptionHandler)
         {
-            IReadOnlyList<ErrorObject> errors = _exceptionHandler.HandleException(context.Exception);
+            ArgumentGuard.NotNull(exceptionHandler, nameof(exceptionHandler));
 
-            context.Result = new ObjectResult(errors)
-            {
-                StatusCode = (int)ErrorObject.GetResponseStatusCode(errors)
-            };
+            _exceptionHandler = exceptionHandler;
         }
 
-        return Task.CompletedTask;
+        /// <inheritdoc />
+        public Task OnExceptionAsync(ExceptionContext context)
+        {
+            ArgumentGuard.NotNull(context, nameof(context));
+
+            if (context.HttpContext.IsJsonApiRequest())
+            {
+                IReadOnlyList<ErrorObject> errors = _exceptionHandler.HandleException(context.Exception);
+
+                context.Result = new ObjectResult(errors)
+                {
+                    StatusCode = (int)ErrorObject.GetResponseStatusCode(errors)
+                };
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }

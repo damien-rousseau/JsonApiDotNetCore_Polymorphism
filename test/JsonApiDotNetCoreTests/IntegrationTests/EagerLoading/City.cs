@@ -2,14 +2,15 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.EagerLoading;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public sealed class City : Identifiable<int>
+namespace JsonApiDotNetCoreTests.IntegrationTests.EagerLoading
 {
-    [Attr]
-    public string Name { get; set; } = null!;
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public sealed class City : Identifiable<int>
+    {
+        [Attr]
+        public string Name { get; set; } = null!;
 
-    [HasMany]
-    public IList<Street> Streets { get; set; } = new List<Street>();
+        [HasMany]
+        public IList<Street> Streets { get; set; } = new List<Street>();
+    }
 }

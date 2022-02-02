@@ -1,8 +1,9 @@
-namespace JsonApiDotNetCore.Serialization.Objects;
-
-public interface IResourceIdentity
+namespace JsonApiDotNetCore.Serialization.Objects
 {
-    public string? Type { get; }
-    public string? Id { get; }
-    public string? Lid { get; }
+    public interface IResourceIdentity
+    {
+        public string? Type { get; }
+        public string? Id { get; }
+        public string? Lid { get; }
+    }
 }

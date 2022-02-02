@@ -4,24 +4,25 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using TestBuildingBlocks;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.HostingInIIS;
-
-[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-public sealed class HostingStartup<TDbContext> : TestableStartup<TDbContext>
-    where TDbContext : DbContext
+namespace JsonApiDotNetCoreTests.IntegrationTests.HostingInIIS
 {
-    protected override void SetJsonApiOptions(JsonApiOptions options)
+    [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+    public sealed class HostingStartup<TDbContext> : TestableStartup<TDbContext>
+        where TDbContext : DbContext
     {
-        base.SetJsonApiOptions(options);
+        protected override void SetJsonApiOptions(JsonApiOptions options)
+        {
+            base.SetJsonApiOptions(options);
 
-        options.Namespace = "public-api";
-        options.IncludeTotalResourceCount = true;
-    }
+            options.Namespace = "public-api";
+            options.IncludeTotalResourceCount = true;
+        }
 
-    public override void Configure(IApplicationBuilder app)
-    {
-        app.UsePathBase("/iis-application-virtual-directory");
+        public override void Configure(IApplicationBuilder app)
+        {
+            app.UsePathBase("/iis-application-virtual-directory");
 
-        base.Configure(app);
+            base.Configure(app);
+        }
     }
 }

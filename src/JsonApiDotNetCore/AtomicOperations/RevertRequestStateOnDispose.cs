@@ -1,36 +1,37 @@
 using JsonApiDotNetCore.Middleware;
 using JsonApiDotNetCore.Resources;
 
-namespace JsonApiDotNetCore.AtomicOperations;
-
-/// <summary>
-/// Copies the current request state into a backup, which is restored on dispose.
-/// </summary>
-internal sealed class RevertRequestStateOnDispose : IDisposable
+namespace JsonApiDotNetCore.AtomicOperations
 {
-    private readonly IJsonApiRequest _sourceRequest;
-    private readonly ITargetedFields? _sourceTargetedFields;
-
-    private readonly IJsonApiRequest _backupRequest = new JsonApiRequest();
-    private readonly ITargetedFields _backupTargetedFields = new TargetedFields();
-
-    public RevertRequestStateOnDispose(IJsonApiRequest request, ITargetedFields? targetedFields)
+    /// <summary>
+    /// Copies the current request state into a backup, which is restored on dispose.
+    /// </summary>
+    internal sealed class RevertRequestStateOnDispose : IDisposable
     {
-        ArgumentGuard.NotNull(request, nameof(request));
+        private readonly IJsonApiRequest _sourceRequest;
+        private readonly ITargetedFields? _sourceTargetedFields;
 
-        _sourceRequest = request;
-        _backupRequest.CopyFrom(request);
+        private readonly IJsonApiRequest _backupRequest = new JsonApiRequest();
+        private readonly ITargetedFields _backupTargetedFields = new TargetedFields();
 
-        if (targetedFields != null)
+        public RevertRequestStateOnDispose(IJsonApiRequest request, ITargetedFields? targetedFields)
         {
-            _sourceTargetedFields = targetedFields;
-            _backupTargetedFields.CopyFrom(targetedFields);
-        }
-    }
+            ArgumentGuard.NotNull(request, nameof(request));
 
-    public void Dispose()
-    {
-        _sourceRequest.CopyFrom(_backupRequest);
-        _sourceTargetedFields?.CopyFrom(_backupTargetedFields);
+            _sourceRequest = request;
+            _backupRequest.CopyFrom(request);
+
+            if (targetedFields != null)
+            {
+                _sourceTargetedFields = targetedFields;
+                _backupTargetedFields.CopyFrom(targetedFields);
+            }
+        }
+
+        public void Dispose()
+        {
+            _sourceRequest.CopyFrom(_backupRequest);
+            _sourceTargetedFields?.CopyFrom(_backupTargetedFields);
+        }
     }
 }

@@ -9,1028 +9,1029 @@ using Microsoft.Extensions.DependencyInjection;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.SoftDeletion;
-
-public sealed class SoftDeletionTests : IClassFixture<IntegrationTestContext<TestableStartup<SoftDeletionDbContext>, SoftDeletionDbContext>>
+namespace JsonApiDotNetCoreTests.IntegrationTests.SoftDeletion
 {
-    private static readonly DateTimeOffset SoftDeletionTime = 1.January(2001).AsUtc();
-
-    private readonly IntegrationTestContext<TestableStartup<SoftDeletionDbContext>, SoftDeletionDbContext> _testContext;
-    private readonly SoftDeletionFakers _fakers = new();
-
-    public SoftDeletionTests(IntegrationTestContext<TestableStartup<SoftDeletionDbContext>, SoftDeletionDbContext> testContext)
+    public sealed class SoftDeletionTests : IClassFixture<IntegrationTestContext<TestableStartup<SoftDeletionDbContext>, SoftDeletionDbContext>>
     {
-        _testContext = testContext;
+        private static readonly DateTimeOffset SoftDeletionTime = 1.January(2001).AsUtc();
 
-        testContext.UseController<CompaniesController>();
-        testContext.UseController<DepartmentsController>();
+        private readonly IntegrationTestContext<TestableStartup<SoftDeletionDbContext>, SoftDeletionDbContext> _testContext;
+        private readonly SoftDeletionFakers _fakers = new();
 
-        testContext.ConfigureServicesAfterStartup(services =>
+        public SoftDeletionTests(IntegrationTestContext<TestableStartup<SoftDeletionDbContext>, SoftDeletionDbContext> testContext)
         {
-            services.AddSingleton<ISystemClock>(new FrozenSystemClock
+            _testContext = testContext;
+
+            testContext.UseController<CompaniesController>();
+            testContext.UseController<DepartmentsController>();
+
+            testContext.ConfigureServicesAfterStartup(services =>
             {
-                UtcNow = 1.January(2005).AsUtc()
+                services.AddSingleton<ISystemClock>(new FrozenSystemClock
+                {
+                    UtcNow = 1.January(2005).AsUtc()
+                });
+
+                services.AddResourceService<SoftDeletionAwareResourceService<Company, int>>();
+                services.AddResourceService<SoftDeletionAwareResourceService<Department, int>>();
+            });
+        }
+
+        [Fact]
+        public async Task Get_primary_resources_excludes_soft_deleted()
+        {
+            // Arrange
+            List<Department> departments = _fakers.Department.Generate(2);
+            departments[0].SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<Department>();
+                dbContext.Departments.AddRange(departments);
+                await dbContext.SaveChangesAsync();
             });
 
-            services.AddResourceService<SoftDeletionAwareResourceService<Company, int>>();
-            services.AddResourceService<SoftDeletionAwareResourceService<Department, int>>();
-        });
-    }
+            const string route = "/departments";
 
-    [Fact]
-    public async Task Get_primary_resources_excludes_soft_deleted()
-    {
-        // Arrange
-        List<Department> departments = _fakers.Department.Generate(2);
-        departments[0].SoftDeletedAt = SoftDeletionTime;
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(departments[1].StringId);
+        }
+
+        [Fact]
+        public async Task Filter_on_primary_resources_excludes_soft_deleted()
         {
-            await dbContext.ClearTableAsync<Department>();
-            dbContext.Departments.AddRange(departments);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            List<Department> departments = _fakers.Department.Generate(3);
 
-        const string route = "/departments";
+            departments[0].Name = "Support";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+            departments[1].Name = "Sales";
+            departments[1].SoftDeletedAt = SoftDeletionTime;
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+            departments[2].Name = "Marketing";
 
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(departments[1].StringId);
-    }
-
-    [Fact]
-    public async Task Filter_on_primary_resources_excludes_soft_deleted()
-    {
-        // Arrange
-        List<Department> departments = _fakers.Department.Generate(3);
-
-        departments[0].Name = "Support";
-
-        departments[1].Name = "Sales";
-        departments[1].SoftDeletedAt = SoftDeletionTime;
-
-        departments[2].Name = "Marketing";
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            await dbContext.ClearTableAsync<Department>();
-            dbContext.Departments.AddRange(departments);
-            await dbContext.SaveChangesAsync();
-        });
-
-        const string route = "/departments?filter=startsWith(name,'S')";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(departments[0].StringId);
-    }
-
-    [Fact]
-    public async Task Get_primary_resources_with_include_excludes_soft_deleted()
-    {
-        // Arrange
-        List<Company> companies = _fakers.Company.Generate(2);
-
-        companies[0].SoftDeletedAt = SoftDeletionTime;
-        companies[0].Departments = _fakers.Department.Generate(1);
-
-        companies[1].Departments = _fakers.Department.Generate(2);
-        companies[1].Departments.ElementAt(1).SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            await dbContext.ClearTableAsync<Company>();
-            dbContext.Companies.AddRange(companies);
-            await dbContext.SaveChangesAsync();
-        });
-
-        const string route = "/companies?include=departments";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Type.Should().Be("companies");
-        responseDocument.Data.ManyValue[0].Id.Should().Be(companies[1].StringId);
-
-        responseDocument.Included.ShouldHaveCount(1);
-        responseDocument.Included[0].Type.Should().Be("departments");
-        responseDocument.Included[0].Id.Should().Be(companies[1].Departments.ElementAt(0).StringId);
-    }
-
-    [Fact]
-    public async Task Cannot_get_soft_deleted_primary_resource_by_ID()
-    {
-        // Arrange
-        Department department = _fakers.Department.Generate();
-        department.SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Departments.Add(department);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/departments/{department.StringId}";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'departments' with ID '{department.StringId}' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_get_secondary_resources_for_soft_deleted_parent()
-    {
-        // Arrange
-        Company company = _fakers.Company.Generate();
-        company.SoftDeletedAt = SoftDeletionTime;
-        company.Departments = _fakers.Department.Generate(1);
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Companies.Add(company);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/companies/{company.StringId}/departments";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'companies' with ID '{company.StringId}' does not exist.");
-    }
-
-    [Fact]
-    public async Task Get_secondary_resources_excludes_soft_deleted()
-    {
-        // Arrange
-        Company company = _fakers.Company.Generate();
-        company.Departments = _fakers.Department.Generate(2);
-        company.Departments.ElementAt(0).SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Companies.Add(company);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/companies/{company.StringId}/departments";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(company.Departments.ElementAt(1).StringId);
-    }
-
-    [Fact]
-    public async Task Cannot_get_secondary_resource_for_soft_deleted_parent()
-    {
-        // Arrange
-        Department department = _fakers.Department.Generate();
-        department.SoftDeletedAt = SoftDeletionTime;
-        department.Company = _fakers.Company.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Departments.Add(department);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/departments/{department.StringId}/company";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'departments' with ID '{department.StringId}' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_get_soft_deleted_secondary_resource()
-    {
-        // Arrange
-        Department department = _fakers.Department.Generate();
-        department.Company = _fakers.Company.Generate();
-        department.Company.SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Departments.Add(department);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/departments/{department.StringId}/company";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-
-        responseDocument.Data.Value.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Cannot_get_ToMany_relationship_for_soft_deleted_parent()
-    {
-        // Arrange
-        Company company = _fakers.Company.Generate();
-        company.SoftDeletedAt = SoftDeletionTime;
-        company.Departments = _fakers.Department.Generate(1);
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Companies.Add(company);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/companies/{company.StringId}/relationships/departments";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'companies' with ID '{company.StringId}' does not exist.");
-    }
-
-    [Fact]
-    public async Task Get_ToMany_relationship_excludes_soft_deleted()
-    {
-        // Arrange
-        Company company = _fakers.Company.Generate();
-        company.Departments = _fakers.Department.Generate(2);
-        company.Departments.ElementAt(0).SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Companies.Add(company);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/companies/{company.StringId}/relationships/departments";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-
-        responseDocument.Data.ManyValue.ShouldHaveCount(1);
-        responseDocument.Data.ManyValue[0].Id.Should().Be(company.Departments.ElementAt(1).StringId);
-    }
-
-    [Fact]
-    public async Task Cannot_get_ToOne_relationship_for_soft_deleted_parent()
-    {
-        // Arrange
-        Department department = _fakers.Department.Generate();
-        department.SoftDeletedAt = SoftDeletionTime;
-        department.Company = _fakers.Company.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Departments.Add(department);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/departments/{department.StringId}/relationships/company";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'departments' with ID '{department.StringId}' does not exist.");
-    }
-
-    [Fact]
-    public async Task Get_ToOne_relationship_excludes_soft_deleted()
-    {
-        // Arrange
-        Department department = _fakers.Department.Generate();
-        department.Company = _fakers.Company.Generate();
-        department.Company.SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Departments.Add(department);
-            await dbContext.SaveChangesAsync();
-        });
-
-        string route = $"/departments/{department.StringId}/relationships/company";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
-
-        responseDocument.Data.Value.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Cannot_create_resource_with_ToMany_relationship_to_soft_deleted()
-    {
-        // Arrange
-        Department existingDepartment = _fakers.Department.Generate();
-        existingDepartment.SoftDeletedAt = SoftDeletionTime;
-
-        string newCompanyName = _fakers.Company.Generate().Name;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Departments.Add(existingDepartment);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            data = new
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                type = "companies",
-                attributes = new
+                await dbContext.ClearTableAsync<Department>();
+                dbContext.Departments.AddRange(departments);
+                await dbContext.SaveChangesAsync();
+            });
+
+            const string route = "/departments?filter=startsWith(name,'S')";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(departments[0].StringId);
+        }
+
+        [Fact]
+        public async Task Get_primary_resources_with_include_excludes_soft_deleted()
+        {
+            // Arrange
+            List<Company> companies = _fakers.Company.Generate(2);
+
+            companies[0].SoftDeletedAt = SoftDeletionTime;
+            companies[0].Departments = _fakers.Department.Generate(1);
+
+            companies[1].Departments = _fakers.Department.Generate(2);
+            companies[1].Departments.ElementAt(1).SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                await dbContext.ClearTableAsync<Company>();
+                dbContext.Companies.AddRange(companies);
+                await dbContext.SaveChangesAsync();
+            });
+
+            const string route = "/companies?include=departments";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Type.Should().Be("companies");
+            responseDocument.Data.ManyValue[0].Id.Should().Be(companies[1].StringId);
+
+            responseDocument.Included.ShouldHaveCount(1);
+            responseDocument.Included[0].Type.Should().Be("departments");
+            responseDocument.Included[0].Id.Should().Be(companies[1].Departments.ElementAt(0).StringId);
+        }
+
+        [Fact]
+        public async Task Cannot_get_soft_deleted_primary_resource_by_ID()
+        {
+            // Arrange
+            Department department = _fakers.Department.Generate();
+            department.SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Departments.Add(department);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/departments/{department.StringId}";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'departments' with ID '{department.StringId}' does not exist.");
+        }
+
+        [Fact]
+        public async Task Cannot_get_secondary_resources_for_soft_deleted_parent()
+        {
+            // Arrange
+            Company company = _fakers.Company.Generate();
+            company.SoftDeletedAt = SoftDeletionTime;
+            company.Departments = _fakers.Department.Generate(1);
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Companies.Add(company);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/companies/{company.StringId}/departments";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'companies' with ID '{company.StringId}' does not exist.");
+        }
+
+        [Fact]
+        public async Task Get_secondary_resources_excludes_soft_deleted()
+        {
+            // Arrange
+            Company company = _fakers.Company.Generate();
+            company.Departments = _fakers.Department.Generate(2);
+            company.Departments.ElementAt(0).SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Companies.Add(company);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/companies/{company.StringId}/departments";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(company.Departments.ElementAt(1).StringId);
+        }
+
+        [Fact]
+        public async Task Cannot_get_secondary_resource_for_soft_deleted_parent()
+        {
+            // Arrange
+            Department department = _fakers.Department.Generate();
+            department.SoftDeletedAt = SoftDeletionTime;
+            department.Company = _fakers.Company.Generate();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Departments.Add(department);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/departments/{department.StringId}/company";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'departments' with ID '{department.StringId}' does not exist.");
+        }
+
+        [Fact]
+        public async Task Cannot_get_soft_deleted_secondary_resource()
+        {
+            // Arrange
+            Department department = _fakers.Department.Generate();
+            department.Company = _fakers.Company.Generate();
+            department.Company.SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Departments.Add(department);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/departments/{department.StringId}/company";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+
+            responseDocument.Data.Value.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task Cannot_get_ToMany_relationship_for_soft_deleted_parent()
+        {
+            // Arrange
+            Company company = _fakers.Company.Generate();
+            company.SoftDeletedAt = SoftDeletionTime;
+            company.Departments = _fakers.Department.Generate(1);
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Companies.Add(company);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/companies/{company.StringId}/relationships/departments";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'companies' with ID '{company.StringId}' does not exist.");
+        }
+
+        [Fact]
+        public async Task Get_ToMany_relationship_excludes_soft_deleted()
+        {
+            // Arrange
+            Company company = _fakers.Company.Generate();
+            company.Departments = _fakers.Department.Generate(2);
+            company.Departments.ElementAt(0).SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Companies.Add(company);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/companies/{company.StringId}/relationships/departments";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+
+            responseDocument.Data.ManyValue.ShouldHaveCount(1);
+            responseDocument.Data.ManyValue[0].Id.Should().Be(company.Departments.ElementAt(1).StringId);
+        }
+
+        [Fact]
+        public async Task Cannot_get_ToOne_relationship_for_soft_deleted_parent()
+        {
+            // Arrange
+            Department department = _fakers.Department.Generate();
+            department.SoftDeletedAt = SoftDeletionTime;
+            department.Company = _fakers.Company.Generate();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Departments.Add(department);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/departments/{department.StringId}/relationships/company";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'departments' with ID '{department.StringId}' does not exist.");
+        }
+
+        [Fact]
+        public async Task Get_ToOne_relationship_excludes_soft_deleted()
+        {
+            // Arrange
+            Department department = _fakers.Department.Generate();
+            department.Company = _fakers.Company.Generate();
+            department.Company.SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Departments.Add(department);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/departments/{department.StringId}/relationships/company";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.OK);
+
+            responseDocument.Data.Value.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task Cannot_create_resource_with_ToMany_relationship_to_soft_deleted()
+        {
+            // Arrange
+            Department existingDepartment = _fakers.Department.Generate();
+            existingDepartment.SoftDeletedAt = SoftDeletionTime;
+
+            string newCompanyName = _fakers.Company.Generate().Name;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Departments.Add(existingDepartment);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = new
                 {
-                    name = newCompanyName
-                },
-                relationships = new
-                {
-                    departments = new
+                    type = "companies",
+                    attributes = new
                     {
-                        data = new[]
+                        name = newCompanyName
+                    },
+                    relationships = new
+                    {
+                        departments = new
                         {
-                            new
+                            data = new[]
                             {
-                                type = "departments",
-                                id = existingDepartment.StringId
+                                new
+                                {
+                                    type = "departments",
+                                    id = existingDepartment.StringId
+                                }
                             }
                         }
                     }
                 }
-            }
-        };
+            };
 
-        const string route = "/companies";
+            const string route = "/companies";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("A related resource does not exist.");
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("A related resource does not exist.");
 
-        error.Detail.Should()
-            .Be($"Related resource of type 'departments' with ID '{existingDepartment.StringId}' in relationship 'departments' does not exist.");
-    }
+            error.Detail.Should()
+                .Be($"Related resource of type 'departments' with ID '{existingDepartment.StringId}' in relationship 'departments' does not exist.");
+        }
 
-    [Fact]
-    public async Task Cannot_create_resource_with_ToOne_relationship_to_soft_deleted()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
-        existingCompany.SoftDeletedAt = SoftDeletionTime;
-
-        string newDepartmentName = _fakers.Department.Generate().Name;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_create_resource_with_ToOne_relationship_to_soft_deleted()
         {
-            dbContext.Companies.Add(existingCompany);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
+            existingCompany.SoftDeletedAt = SoftDeletionTime;
 
-        var requestBody = new
-        {
-            data = new
+            string newDepartmentName = _fakers.Department.Generate().Name;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                type = "departments",
-                attributes = new
+                dbContext.Companies.Add(existingCompany);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = new
                 {
-                    name = newDepartmentName
-                },
-                relationships = new
-                {
-                    company = new
+                    type = "departments",
+                    attributes = new
                     {
-                        data = new
-                        {
-                            type = "companies",
-                            id = existingCompany.StringId
-                        }
-                    }
-                }
-            }
-        };
-
-        const string route = "/departments";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("A related resource does not exist.");
-        error.Detail.Should().Be($"Related resource of type 'companies' with ID '{existingCompany.StringId}' in relationship 'company' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_update_soft_deleted_resource()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
-        existingCompany.SoftDeletedAt = SoftDeletionTime;
-
-        string newCompanyName = _fakers.Company.Generate().Name;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Companies.Add(existingCompany);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            data = new
-            {
-                type = "companies",
-                id = existingCompany.StringId,
-                attributes = new
-                {
-                    name = newCompanyName
-                }
-            }
-        };
-
-        string route = $"/companies/{existingCompany.StringId}";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'companies' with ID '{existingCompany.StringId}' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_update_resource_with_ToMany_relationship_to_soft_deleted()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
-
-        Department existingDepartment = _fakers.Department.Generate();
-        existingDepartment.SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.AddInRange(existingCompany, existingDepartment);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            data = new
-            {
-                type = "companies",
-                id = existingCompany.StringId,
-                relationships = new
-                {
-                    departments = new
+                        name = newDepartmentName
+                    },
+                    relationships = new
                     {
-                        data = new[]
+                        company = new
                         {
-                            new
+                            data = new
                             {
-                                type = "departments",
-                                id = existingDepartment.StringId
+                                type = "companies",
+                                id = existingCompany.StringId
                             }
                         }
                     }
                 }
-            }
-        };
+            };
 
-        string route = $"/companies/{existingCompany.StringId}";
+            const string route = "/departments";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("A related resource does not exist.");
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("A related resource does not exist.");
+            error.Detail.Should().Be($"Related resource of type 'companies' with ID '{existingCompany.StringId}' in relationship 'company' does not exist.");
+        }
 
-        error.Detail.Should()
-            .Be($"Related resource of type 'departments' with ID '{existingDepartment.StringId}' in relationship 'departments' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_update_resource_with_ToOne_relationship_to_soft_deleted()
-    {
-        // Arrange
-        Department existingDepartment = _fakers.Department.Generate();
-
-        Company existingCompany = _fakers.Company.Generate();
-        existingCompany.SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_update_soft_deleted_resource()
         {
-            dbContext.AddInRange(existingDepartment, existingCompany);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
+            existingCompany.SoftDeletedAt = SoftDeletionTime;
 
-        var requestBody = new
-        {
-            data = new
+            string newCompanyName = _fakers.Company.Generate().Name;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                type = "departments",
-                id = existingDepartment.StringId,
-                relationships = new
+                dbContext.Companies.Add(existingCompany);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = new
                 {
-                    company = new
+                    type = "companies",
+                    id = existingCompany.StringId,
+                    attributes = new
                     {
-                        data = new
+                        name = newCompanyName
+                    }
+                }
+            };
+
+            string route = $"/companies/{existingCompany.StringId}";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'companies' with ID '{existingCompany.StringId}' does not exist.");
+        }
+
+        [Fact]
+        public async Task Cannot_update_resource_with_ToMany_relationship_to_soft_deleted()
+        {
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
+
+            Department existingDepartment = _fakers.Department.Generate();
+            existingDepartment.SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.AddInRange(existingCompany, existingDepartment);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = new
+                {
+                    type = "companies",
+                    id = existingCompany.StringId,
+                    relationships = new
+                    {
+                        departments = new
                         {
-                            type = "companies",
-                            id = existingCompany.StringId
+                            data = new[]
+                            {
+                                new
+                                {
+                                    type = "departments",
+                                    id = existingDepartment.StringId
+                                }
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
 
-        string route = $"/departments/{existingDepartment.StringId}";
+            string route = $"/companies/{existingCompany.StringId}";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("A related resource does not exist.");
-        error.Detail.Should().Be($"Related resource of type 'companies' with ID '{existingCompany.StringId}' in relationship 'company' does not exist.");
-    }
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("A related resource does not exist.");
 
-    [Fact]
-    public async Task Cannot_update_ToMany_relationship_for_soft_deleted_parent()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
-        existingCompany.SoftDeletedAt = SoftDeletionTime;
-        existingCompany.Departments = _fakers.Department.Generate(1);
+            error.Detail.Should()
+                .Be($"Related resource of type 'departments' with ID '{existingDepartment.StringId}' in relationship 'departments' does not exist.");
+        }
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_update_resource_with_ToOne_relationship_to_soft_deleted()
         {
-            dbContext.Companies.Add(existingCompany);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Department existingDepartment = _fakers.Department.Generate();
 
-        var requestBody = new
-        {
-            data = Array.Empty<object>()
-        };
+            Company existingCompany = _fakers.Company.Generate();
+            existingCompany.SoftDeletedAt = SoftDeletionTime;
 
-        string route = $"/companies/{existingCompany.StringId}/relationships/departments";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'companies' with ID '{existingCompany.StringId}' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_update_ToMany_relationship_to_soft_deleted()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
-
-        Department existingDepartment = _fakers.Department.Generate();
-        existingDepartment.SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.AddInRange(existingCompany, existingDepartment);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            data = new[]
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                new
+                dbContext.AddInRange(existingDepartment, existingCompany);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = new
                 {
                     type = "departments",
-                    id = existingDepartment.StringId
+                    id = existingDepartment.StringId,
+                    relationships = new
+                    {
+                        company = new
+                        {
+                            data = new
+                            {
+                                type = "companies",
+                                id = existingCompany.StringId
+                            }
+                        }
+                    }
                 }
-            }
-        };
+            };
 
-        string route = $"/companies/{existingCompany.StringId}/relationships/departments";
+            string route = $"/departments/{existingDepartment.StringId}";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("A related resource does not exist.");
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("A related resource does not exist.");
+            error.Detail.Should().Be($"Related resource of type 'companies' with ID '{existingCompany.StringId}' in relationship 'company' does not exist.");
+        }
 
-        error.Detail.Should()
-            .Be($"Related resource of type 'departments' with ID '{existingDepartment.StringId}' in relationship 'departments' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_update_ToOne_relationship_for_soft_deleted_parent()
-    {
-        // Arrange
-        Department existingDepartment = _fakers.Department.Generate();
-        existingDepartment.SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_update_ToMany_relationship_for_soft_deleted_parent()
         {
-            dbContext.Departments.Add(existingDepartment);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
+            existingCompany.SoftDeletedAt = SoftDeletionTime;
+            existingCompany.Departments = _fakers.Department.Generate(1);
 
-        var requestBody = new
-        {
-            data = (object?)null
-        };
-
-        string route = $"/departments/{existingDepartment.StringId}/relationships/company";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'departments' with ID '{existingDepartment.StringId}' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_update_ToOne_relationship_to_soft_deleted()
-    {
-        // Arrange
-        Department existingDepartment = _fakers.Department.Generate();
-
-        Company existingCompany = _fakers.Company.Generate();
-        existingCompany.SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.AddInRange(existingDepartment, existingCompany);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            data = new
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                type = "companies",
-                id = existingCompany.StringId
-            }
-        };
+                dbContext.Companies.Add(existingCompany);
+                await dbContext.SaveChangesAsync();
+            });
 
-        string route = $"/departments/{existingDepartment.StringId}/relationships/company";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("A related resource does not exist.");
-        error.Detail.Should().Be($"Related resource of type 'companies' with ID '{existingCompany.StringId}' in relationship 'company' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_add_to_ToMany_relationship_for_soft_deleted_parent()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
-        existingCompany.SoftDeletedAt = SoftDeletionTime;
-
-        Department existingDepartment = _fakers.Department.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.AddInRange(existingCompany, existingDepartment);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            data = new[]
+            var requestBody = new
             {
-                new
+                data = Array.Empty<object>()
+            };
+
+            string route = $"/companies/{existingCompany.StringId}/relationships/departments";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'companies' with ID '{existingCompany.StringId}' does not exist.");
+        }
+
+        [Fact]
+        public async Task Cannot_update_ToMany_relationship_to_soft_deleted()
+        {
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
+
+            Department existingDepartment = _fakers.Department.Generate();
+            existingDepartment.SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.AddInRange(existingCompany, existingDepartment);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = new[]
                 {
-                    type = "departments",
-                    id = existingDepartment.StringId
+                    new
+                    {
+                        type = "departments",
+                        id = existingDepartment.StringId
+                    }
                 }
-            }
-        };
+            };
 
-        string route = $"/companies/{existingCompany.StringId}/relationships/departments";
+            string route = $"/companies/{existingCompany.StringId}/relationships/departments";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'companies' with ID '{existingCompany.StringId}' does not exist.");
-    }
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("A related resource does not exist.");
 
-    [Fact]
-    public async Task Cannot_add_to_ToMany_relationship_with_soft_deleted()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
+            error.Detail.Should()
+                .Be($"Related resource of type 'departments' with ID '{existingDepartment.StringId}' in relationship 'departments' does not exist.");
+        }
 
-        Department existingDepartment = _fakers.Department.Generate();
-        existingDepartment.SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_update_ToOne_relationship_for_soft_deleted_parent()
         {
-            dbContext.AddInRange(existingCompany, existingDepartment);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Department existingDepartment = _fakers.Department.Generate();
+            existingDepartment.SoftDeletedAt = SoftDeletionTime;
 
-        var requestBody = new
-        {
-            data = new[]
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                new
-                {
-                    type = "departments",
-                    id = existingDepartment.StringId
-                }
-            }
-        };
+                dbContext.Departments.Add(existingDepartment);
+                await dbContext.SaveChangesAsync();
+            });
 
-        string route = $"/companies/{existingCompany.StringId}/relationships/departments";
-
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
-
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
-
-        responseDocument.Errors.ShouldHaveCount(1);
-
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("A related resource does not exist.");
-
-        error.Detail.Should()
-            .Be($"Related resource of type 'departments' with ID '{existingDepartment.StringId}' in relationship 'departments' does not exist.");
-    }
-
-    [Fact]
-    public async Task Cannot_remove_from_ToMany_relationship_for_soft_deleted_parent()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
-        existingCompany.SoftDeletedAt = SoftDeletionTime;
-        existingCompany.Departments = _fakers.Department.Generate(1);
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
-        {
-            dbContext.Companies.Add(existingCompany);
-            await dbContext.SaveChangesAsync();
-        });
-
-        var requestBody = new
-        {
-            data = new[]
+            var requestBody = new
             {
-                new
-                {
-                    type = "departments",
-                    id = existingCompany.Departments.ElementAt(0).StringId
-                }
-            }
-        };
+                data = (object?)null
+            };
 
-        string route = $"/companies/{existingCompany.StringId}/relationships/departments";
+            string route = $"/departments/{existingDepartment.StringId}/relationships/company";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'companies' with ID '{existingCompany.StringId}' does not exist.");
-    }
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'departments' with ID '{existingDepartment.StringId}' does not exist.");
+        }
 
-    [Fact]
-    public async Task Cannot_remove_from_ToMany_relationship_with_soft_deleted()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
-        existingCompany.Departments = _fakers.Department.Generate(1);
-        existingCompany.Departments.ElementAt(0).SoftDeletedAt = SoftDeletionTime;
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_update_ToOne_relationship_to_soft_deleted()
         {
-            dbContext.Companies.Add(existingCompany);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Department existingDepartment = _fakers.Department.Generate();
 
-        var requestBody = new
-        {
-            data = new[]
+            Company existingCompany = _fakers.Company.Generate();
+            existingCompany.SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
             {
-                new
+                dbContext.AddInRange(existingDepartment, existingCompany);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = new
                 {
-                    type = "departments",
-                    id = existingCompany.Departments.ElementAt(0).StringId
+                    type = "companies",
+                    id = existingCompany.StringId
                 }
-            }
-        };
+            };
 
-        string route = $"/companies/{existingCompany.StringId}/relationships/departments";
+            string route = $"/departments/{existingDepartment.StringId}/relationships/company";
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route, requestBody);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePatchAsync<Document>(route, requestBody);
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            responseDocument.Errors.ShouldHaveCount(1);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("A related resource does not exist.");
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("A related resource does not exist.");
+            error.Detail.Should().Be($"Related resource of type 'companies' with ID '{existingCompany.StringId}' in relationship 'company' does not exist.");
+        }
 
-        error.Detail.Should().Be(
-            $"Related resource of type 'departments' with ID '{existingCompany.Departments.ElementAt(0).StringId}' in relationship 'departments' does not exist.");
-    }
-
-    [Fact]
-    public async Task Can_soft_delete_resource()
-    {
-        // Arrange
-        Company existingCompany = _fakers.Company.Generate();
-
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+        [Fact]
+        public async Task Cannot_add_to_ToMany_relationship_for_soft_deleted_parent()
         {
-            dbContext.Companies.Add(existingCompany);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
+            existingCompany.SoftDeletedAt = SoftDeletionTime;
 
-        string route = $"/companies/{existingCompany.StringId}";
+            Department existingDepartment = _fakers.Department.Generate();
 
-        // Act
-        (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.AddInRange(existingCompany, existingDepartment);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
+            var requestBody = new
+            {
+                data = new[]
+                {
+                    new
+                    {
+                        type = "departments",
+                        id = existingDepartment.StringId
+                    }
+                }
+            };
 
-        responseDocument.Should().BeEmpty();
+            string route = $"/companies/{existingCompany.StringId}/relationships/departments";
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'companies' with ID '{existingCompany.StringId}' does not exist.");
+        }
+
+        [Fact]
+        public async Task Cannot_add_to_ToMany_relationship_with_soft_deleted()
         {
-            Company companyInDatabase = await dbContext.Companies.IgnoreQueryFilters().FirstWithIdAsync(existingCompany.Id);
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
 
-            companyInDatabase.Name.Should().Be(existingCompany.Name);
-            companyInDatabase.SoftDeletedAt.ShouldNotBeNull();
-        });
-    }
+            Department existingDepartment = _fakers.Department.Generate();
+            existingDepartment.SoftDeletedAt = SoftDeletionTime;
 
-    [Fact]
-    public async Task Cannot_delete_soft_deleted_resource()
-    {
-        // Arrange
-        Department existingDepartment = _fakers.Department.Generate();
-        existingDepartment.SoftDeletedAt = SoftDeletionTime;
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.AddInRange(existingCompany, existingDepartment);
+                await dbContext.SaveChangesAsync();
+            });
 
-        await _testContext.RunOnDatabaseAsync(async dbContext =>
+            var requestBody = new
+            {
+                data = new[]
+                {
+                    new
+                    {
+                        type = "departments",
+                        id = existingDepartment.StringId
+                    }
+                }
+            };
+
+            string route = $"/companies/{existingCompany.StringId}/relationships/departments";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecutePostAsync<Document>(route, requestBody);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("A related resource does not exist.");
+
+            error.Detail.Should()
+                .Be($"Related resource of type 'departments' with ID '{existingDepartment.StringId}' in relationship 'departments' does not exist.");
+        }
+
+        [Fact]
+        public async Task Cannot_remove_from_ToMany_relationship_for_soft_deleted_parent()
         {
-            dbContext.Departments.Add(existingDepartment);
-            await dbContext.SaveChangesAsync();
-        });
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
+            existingCompany.SoftDeletedAt = SoftDeletionTime;
+            existingCompany.Departments = _fakers.Department.Generate(1);
 
-        string route = $"/departments/{existingDepartment.StringId}";
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Companies.Add(existingCompany);
+                await dbContext.SaveChangesAsync();
+            });
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route);
+            var requestBody = new
+            {
+                data = new[]
+                {
+                    new
+                    {
+                        type = "departments",
+                        id = existingCompany.Departments.ElementAt(0).StringId
+                    }
+                }
+            };
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            string route = $"/companies/{existingCompany.StringId}/relationships/departments";
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route, requestBody);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        error.Title.Should().Be("The requested resource does not exist.");
-        error.Detail.Should().Be($"Resource of type 'departments' with ID '{existingDepartment.StringId}' does not exist.");
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'companies' with ID '{existingCompany.StringId}' does not exist.");
+        }
+
+        [Fact]
+        public async Task Cannot_remove_from_ToMany_relationship_with_soft_deleted()
+        {
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
+            existingCompany.Departments = _fakers.Department.Generate(1);
+            existingCompany.Departments.ElementAt(0).SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Companies.Add(existingCompany);
+                await dbContext.SaveChangesAsync();
+            });
+
+            var requestBody = new
+            {
+                data = new[]
+                {
+                    new
+                    {
+                        type = "departments",
+                        id = existingCompany.Departments.ElementAt(0).StringId
+                    }
+                }
+            };
+
+            string route = $"/companies/{existingCompany.StringId}/relationships/departments";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route, requestBody);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("A related resource does not exist.");
+
+            error.Detail.Should().Be(
+                $"Related resource of type 'departments' with ID '{existingCompany.Departments.ElementAt(0).StringId}' in relationship 'departments' does not exist.");
+        }
+
+        [Fact]
+        public async Task Can_soft_delete_resource()
+        {
+            // Arrange
+            Company existingCompany = _fakers.Company.Generate();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Companies.Add(existingCompany);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/companies/{existingCompany.StringId}";
+
+            // Act
+            (HttpResponseMessage httpResponse, string responseDocument) = await _testContext.ExecuteDeleteAsync<string>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NoContent);
+
+            responseDocument.Should().BeEmpty();
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                Company companyInDatabase = await dbContext.Companies.IgnoreQueryFilters().FirstWithIdAsync(existingCompany.Id);
+
+                companyInDatabase.Name.Should().Be(existingCompany.Name);
+                companyInDatabase.SoftDeletedAt.ShouldNotBeNull();
+            });
+        }
+
+        [Fact]
+        public async Task Cannot_delete_soft_deleted_resource()
+        {
+            // Arrange
+            Department existingDepartment = _fakers.Department.Generate();
+            existingDepartment.SoftDeletedAt = SoftDeletionTime;
+
+            await _testContext.RunOnDatabaseAsync(async dbContext =>
+            {
+                dbContext.Departments.Add(existingDepartment);
+                await dbContext.SaveChangesAsync();
+            });
+
+            string route = $"/departments/{existingDepartment.StringId}";
+
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteDeleteAsync<Document>(route);
+
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            error.Title.Should().Be("The requested resource does not exist.");
+            error.Detail.Should().Be($"Resource of type 'departments' with ID '{existingDepartment.StringId}' does not exist.");
+        }
     }
 }

@@ -1,11 +1,12 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCoreExample.Models;
-
-[UsedImplicitly(ImplicitUseTargetFlags.Members)]
-public enum TodoItemPriority
+namespace JsonApiDotNetCoreExample.Models
 {
-    Low,
-    Medium,
-    High
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public enum TodoItemPriority
+    {
+        Low,
+        Medium,
+        High
+    }
 }

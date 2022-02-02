@@ -2,58 +2,59 @@ using System.Linq.Expressions;
 using JetBrains.Annotations;
 using JsonApiDotNetCore.Queries.Expressions;
 
-namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding;
-
-/// <summary>
-/// Transforms <see cref="PaginationExpression" /> into <see cref="Queryable.Skip{TSource}" /> and
-/// <see cref="Queryable.Take{TSource}(IQueryable{TSource},int)" /> calls.
-/// </summary>
-[PublicAPI]
-public class SkipTakeClauseBuilder : QueryClauseBuilder<object?>
+namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding
 {
-    private readonly Expression _source;
-    private readonly Type _extensionType;
-
-    public SkipTakeClauseBuilder(Expression source, LambdaScope lambdaScope, Type extensionType)
-        : base(lambdaScope)
+    /// <summary>
+    /// Transforms <see cref="PaginationExpression" /> into <see cref="Queryable.Skip{TSource}" /> and
+    /// <see cref="Queryable.Take{TSource}(IQueryable{TSource},int)" /> calls.
+    /// </summary>
+    [PublicAPI]
+    public class SkipTakeClauseBuilder : QueryClauseBuilder<object?>
     {
-        ArgumentGuard.NotNull(source, nameof(source));
-        ArgumentGuard.NotNull(extensionType, nameof(extensionType));
+        private readonly Expression _source;
+        private readonly Type _extensionType;
 
-        _source = source;
-        _extensionType = extensionType;
-    }
-
-    public Expression ApplySkipTake(PaginationExpression expression)
-    {
-        ArgumentGuard.NotNull(expression, nameof(expression));
-
-        return Visit(expression, null);
-    }
-
-    public override Expression VisitPagination(PaginationExpression expression, object? argument)
-    {
-        Expression skipTakeExpression = _source;
-
-        if (expression.PageSize != null)
+        public SkipTakeClauseBuilder(Expression source, LambdaScope lambdaScope, Type extensionType)
+            : base(lambdaScope)
         {
-            int skipValue = (expression.PageNumber.OneBasedValue - 1) * expression.PageSize.Value;
+            ArgumentGuard.NotNull(source, nameof(source));
+            ArgumentGuard.NotNull(extensionType, nameof(extensionType));
 
-            if (skipValue > 0)
-            {
-                skipTakeExpression = ExtensionMethodCall(skipTakeExpression, "Skip", skipValue);
-            }
-
-            skipTakeExpression = ExtensionMethodCall(skipTakeExpression, "Take", expression.PageSize.Value);
+            _source = source;
+            _extensionType = extensionType;
         }
 
-        return skipTakeExpression;
-    }
+        public Expression ApplySkipTake(PaginationExpression expression)
+        {
+            ArgumentGuard.NotNull(expression, nameof(expression));
 
-    private Expression ExtensionMethodCall(Expression source, string operationName, int value)
-    {
-        Expression constant = value.CreateTupleAccessExpressionForConstant(typeof(int));
+            return Visit(expression, null);
+        }
 
-        return Expression.Call(_extensionType, operationName, LambdaScope.Parameter.Type.AsArray(), source, constant);
+        public override Expression VisitPagination(PaginationExpression expression, object? argument)
+        {
+            Expression skipTakeExpression = _source;
+
+            if (expression.PageSize != null)
+            {
+                int skipValue = (expression.PageNumber.OneBasedValue - 1) * expression.PageSize.Value;
+
+                if (skipValue > 0)
+                {
+                    skipTakeExpression = ExtensionMethodCall(skipTakeExpression, "Skip", skipValue);
+                }
+
+                skipTakeExpression = ExtensionMethodCall(skipTakeExpression, "Take", expression.PageSize.Value);
+            }
+
+            return skipTakeExpression;
+        }
+
+        private Expression ExtensionMethodCall(Expression source, string operationName, int value)
+        {
+            Expression constant = value.CreateTupleAccessExpressionForConstant(typeof(int));
+
+            return Expression.Call(_extensionType, operationName, LambdaScope.Parameter.Type.AsArray(), source, constant);
+        }
     }
 }

@@ -3,33 +3,34 @@ using JsonApiDotNetCore.Errors;
 using JsonApiDotNetCore.Serialization.Objects;
 using JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.FireAndForgetDelivery;
-
-public sealed class MessageBroker
+namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.FireAndForgetDelivery
 {
-    internal IList<OutgoingMessage> SentMessages { get; } = new List<OutgoingMessage>();
-
-    internal bool SimulateFailure { get; set; }
-
-    internal void Reset()
+    public sealed class MessageBroker
     {
-        SimulateFailure = false;
-        SentMessages.Clear();
-    }
+        internal IList<OutgoingMessage> SentMessages { get; } = new List<OutgoingMessage>();
 
-    internal Task PostMessageAsync(OutgoingMessage message, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        SentMessages.Add(message);
+        internal bool SimulateFailure { get; set; }
 
-        if (SimulateFailure)
+        internal void Reset()
         {
-            throw new JsonApiException(new ErrorObject(HttpStatusCode.ServiceUnavailable)
-            {
-                Title = "Message delivery failed."
-            });
+            SimulateFailure = false;
+            SentMessages.Clear();
         }
 
-        return Task.CompletedTask;
+        internal Task PostMessageAsync(OutgoingMessage message, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            SentMessages.Add(message);
+
+            if (SimulateFailure)
+            {
+                throw new JsonApiException(new ErrorObject(HttpStatusCode.ServiceUnavailable)
+                {
+                    Title = "Message delivery failed."
+                });
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }

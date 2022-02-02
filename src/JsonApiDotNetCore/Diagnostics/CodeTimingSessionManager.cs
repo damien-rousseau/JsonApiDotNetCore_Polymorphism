@@ -2,91 +2,92 @@ using System.Reflection;
 
 #pragma warning disable AV1008 // Class should not be static
 
-namespace JsonApiDotNetCore.Diagnostics;
-
-/// <summary>
-/// Provides access to the "current" measurement, which removes the need to pass along a <see cref="CascadingCodeTimer" /> instance through the entire
-/// call chain.
-/// </summary>
-public static class CodeTimingSessionManager
+namespace JsonApiDotNetCore.Diagnostics
 {
-    public static readonly bool IsEnabled;
-    private static ICodeTimerSession? _session;
-
-    public static ICodeTimer Current
+    /// <summary>
+    /// Provides access to the "current" measurement, which removes the need to pass along a <see cref="CascadingCodeTimer" /> instance through the entire
+    /// call chain.
+    /// </summary>
+    public static class CodeTimingSessionManager
     {
-        get
+        public static readonly bool IsEnabled;
+        private static ICodeTimerSession? _session;
+
+        public static ICodeTimer Current
         {
-            if (!IsEnabled)
+            get
             {
-                return DisabledCodeTimer.Instance;
+                if (!IsEnabled)
+                {
+                    return DisabledCodeTimer.Instance;
+                }
+
+                AssertHasActiveSession();
+
+                return _session!.CodeTimer;
             }
-
-            AssertHasActiveSession();
-
-            return _session!.CodeTimer;
         }
-    }
 
-    static CodeTimingSessionManager()
-    {
+        static CodeTimingSessionManager()
+        {
 #if DEBUG
-        IsEnabled = !IsRunningInTest() && !IsRunningInBenchmark();
+            IsEnabled = !IsRunningInTest() && !IsRunningInBenchmark();
 #else
         IsEnabled = false;
 #endif
-    }
-
-    // ReSharper disable once UnusedMember.Local
-    private static bool IsRunningInTest()
-    {
-        const string testAssemblyName = "xunit.core";
-
-        return AppDomain.CurrentDomain.GetAssemblies().Any(assembly =>
-            assembly.FullName != null && assembly.FullName.StartsWith(testAssemblyName, StringComparison.Ordinal));
-    }
-
-    // ReSharper disable once UnusedMember.Local
-    private static bool IsRunningInBenchmark()
-    {
-        return Assembly.GetEntryAssembly()?.GetName().Name == "Benchmarks";
-    }
-
-    private static void AssertHasActiveSession()
-    {
-        if (_session == null)
-        {
-            throw new InvalidOperationException($"Call {nameof(Capture)} before accessing the current session.");
         }
-    }
 
-    public static void Capture(ICodeTimerSession session)
-    {
-        ArgumentGuard.NotNull(session, nameof(session));
-
-        AssertNoActiveSession();
-
-        if (IsEnabled)
+        // ReSharper disable once UnusedMember.Local
+        private static bool IsRunningInTest()
         {
-            session.Disposed += SessionOnDisposed;
-            _session = session;
+            const string testAssemblyName = "xunit.core";
+
+            return AppDomain.CurrentDomain.GetAssemblies().Any(assembly =>
+                assembly.FullName != null && assembly.FullName.StartsWith(testAssemblyName, StringComparison.Ordinal));
         }
-    }
 
-    private static void AssertNoActiveSession()
-    {
-        if (_session != null)
+        // ReSharper disable once UnusedMember.Local
+        private static bool IsRunningInBenchmark()
         {
-            throw new InvalidOperationException("Sessions cannot be nested. Dispose the current session first.");
+            return Assembly.GetEntryAssembly()?.GetName().Name == "Benchmarks";
         }
-    }
 
-    private static void SessionOnDisposed(object? sender, EventArgs args)
-    {
-        if (_session != null)
+        private static void AssertHasActiveSession()
         {
-            _session.Disposed -= SessionOnDisposed;
-            _session = null;
+            if (_session == null)
+            {
+                throw new InvalidOperationException($"Call {nameof(Capture)} before accessing the current session.");
+            }
+        }
+
+        public static void Capture(ICodeTimerSession session)
+        {
+            ArgumentGuard.NotNull(session, nameof(session));
+
+            AssertNoActiveSession();
+
+            if (IsEnabled)
+            {
+                session.Disposed += SessionOnDisposed;
+                _session = session;
+            }
+        }
+
+        private static void AssertNoActiveSession()
+        {
+            if (_session != null)
+            {
+                throw new InvalidOperationException("Sessions cannot be nested. Dispose the current session first.");
+            }
+        }
+
+        private static void SessionOnDisposed(object? sender, EventArgs args)
+        {
+            if (_session != null)
+            {
+                _session.Disposed -= SessionOnDisposed;
+                _session = null;
+            }
         }
     }
 }

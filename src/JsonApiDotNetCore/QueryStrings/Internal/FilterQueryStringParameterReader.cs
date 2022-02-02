@@ -11,166 +11,167 @@ using JsonApiDotNetCore.Resources;
 using JsonApiDotNetCore.Resources.Annotations;
 using Microsoft.Extensions.Primitives;
 
-namespace JsonApiDotNetCore.QueryStrings.Internal;
-
-[PublicAPI]
-public class FilterQueryStringParameterReader : QueryStringParameterReader, IFilterQueryStringParameterReader
+namespace JsonApiDotNetCore.QueryStrings.Internal
 {
-    private static readonly LegacyFilterNotationConverter LegacyConverter = new();
-
-    private readonly IJsonApiOptions _options;
-    private readonly QueryStringParameterScopeParser _scopeParser;
-    private readonly FilterParser _filterParser;
-    private readonly ImmutableArray<FilterExpression>.Builder _filtersInGlobalScope = ImmutableArray.CreateBuilder<FilterExpression>();
-    private readonly Dictionary<ResourceFieldChainExpression, ImmutableArray<FilterExpression>.Builder> _filtersPerScope = new();
-
-    private string? _lastParameterName;
-
-    public bool AllowEmptyValue => false;
-
-    public FilterQueryStringParameterReader(IJsonApiRequest request, IResourceGraph resourceGraph, IResourceFactory resourceFactory, IJsonApiOptions options)
-        : base(request, resourceGraph)
+    [PublicAPI]
+    public class FilterQueryStringParameterReader : QueryStringParameterReader, IFilterQueryStringParameterReader
     {
-        ArgumentGuard.NotNull(options, nameof(options));
+        private static readonly LegacyFilterNotationConverter LegacyConverter = new();
 
-        _options = options;
-        _scopeParser = new QueryStringParameterScopeParser(FieldChainRequirements.EndsInToMany);
-        _filterParser = new FilterParser(resourceFactory, ValidateSingleField);
-    }
+        private readonly IJsonApiOptions _options;
+        private readonly QueryStringParameterScopeParser _scopeParser;
+        private readonly FilterParser _filterParser;
+        private readonly ImmutableArray<FilterExpression>.Builder _filtersInGlobalScope = ImmutableArray.CreateBuilder<FilterExpression>();
+        private readonly Dictionary<ResourceFieldChainExpression, ImmutableArray<FilterExpression>.Builder> _filtersPerScope = new();
 
-    protected void ValidateSingleField(ResourceFieldAttribute field, ResourceType resourceType, string path)
-    {
-        if (field is AttrAttribute attribute && !attribute.Capabilities.HasFlag(AttrCapabilities.AllowFilter))
+        private string? _lastParameterName;
+
+        public bool AllowEmptyValue => false;
+
+        public FilterQueryStringParameterReader(IJsonApiRequest request, IResourceGraph resourceGraph, IResourceFactory resourceFactory, IJsonApiOptions options)
+            : base(request, resourceGraph)
         {
-            throw new InvalidQueryStringParameterException(_lastParameterName!, "Filtering on the requested attribute is not allowed.",
-                $"Filtering on attribute '{attribute.PublicName}' is not allowed.");
+            ArgumentGuard.NotNull(options, nameof(options));
+
+            _options = options;
+            _scopeParser = new QueryStringParameterScopeParser(FieldChainRequirements.EndsInToMany);
+            _filterParser = new FilterParser(resourceFactory, ValidateSingleField);
         }
-    }
 
-    /// <inheritdoc />
-    public virtual bool IsEnabled(DisableQueryStringAttribute disableQueryStringAttribute)
-    {
-        ArgumentGuard.NotNull(disableQueryStringAttribute, nameof(disableQueryStringAttribute));
-
-        return !IsAtomicOperationsRequest && !disableQueryStringAttribute.ContainsParameter(JsonApiQueryStringParameters.Filter);
-    }
-
-    /// <inheritdoc />
-    public virtual bool CanRead(string parameterName)
-    {
-        ArgumentGuard.NotNullNorEmpty(parameterName, nameof(parameterName));
-
-        bool isNested = parameterName.StartsWith("filter[", StringComparison.Ordinal) && parameterName.EndsWith("]", StringComparison.Ordinal);
-        return parameterName == "filter" || isNested;
-    }
-
-    /// <inheritdoc />
-    public virtual void Read(string parameterName, StringValues parameterValue)
-    {
-        _lastParameterName = parameterName;
-
-        foreach (string value in parameterValue.SelectMany(ExtractParameterValue))
+        protected void ValidateSingleField(ResourceFieldAttribute field, ResourceType resourceType, string path)
         {
-            ReadSingleValue(parameterName, value);
-        }
-    }
-
-    private IEnumerable<string> ExtractParameterValue(string parameterValue)
-    {
-        if (_options.EnableLegacyFilterNotation)
-        {
-            foreach (string condition in LegacyConverter.ExtractConditions(parameterValue))
+            if (field is AttrAttribute attribute && !attribute.Capabilities.HasFlag(AttrCapabilities.AllowFilter))
             {
-                yield return condition;
+                throw new InvalidQueryStringParameterException(_lastParameterName!, "Filtering on the requested attribute is not allowed.",
+                    $"Filtering on attribute '{attribute.PublicName}' is not allowed.");
             }
         }
-        else
+
+        /// <inheritdoc />
+        public virtual bool IsEnabled(DisableQueryStringAttribute disableQueryStringAttribute)
         {
-            yield return parameterValue;
+            ArgumentGuard.NotNull(disableQueryStringAttribute, nameof(disableQueryStringAttribute));
+
+            return !IsAtomicOperationsRequest && !disableQueryStringAttribute.ContainsParameter(JsonApiQueryStringParameters.Filter);
         }
-    }
 
-    private void ReadSingleValue(string parameterName, string parameterValue)
-    {
-        try
+        /// <inheritdoc />
+        public virtual bool CanRead(string parameterName)
         {
-            string name = parameterName;
-            string value = parameterValue;
+            ArgumentGuard.NotNullNorEmpty(parameterName, nameof(parameterName));
 
+            bool isNested = parameterName.StartsWith("filter[", StringComparison.Ordinal) && parameterName.EndsWith("]", StringComparison.Ordinal);
+            return parameterName == "filter" || isNested;
+        }
+
+        /// <inheritdoc />
+        public virtual void Read(string parameterName, StringValues parameterValue)
+        {
+            _lastParameterName = parameterName;
+
+            foreach (string value in parameterValue.SelectMany(ExtractParameterValue))
+            {
+                ReadSingleValue(parameterName, value);
+            }
+        }
+
+        private IEnumerable<string> ExtractParameterValue(string parameterValue)
+        {
             if (_options.EnableLegacyFilterNotation)
             {
-                (name, value) = LegacyConverter.Convert(name, value);
+                foreach (string condition in LegacyConverter.ExtractConditions(parameterValue))
+                {
+                    yield return condition;
+                }
             }
-
-            ResourceFieldChainExpression? scope = GetScope(name);
-            FilterExpression filter = GetFilter(value, scope);
-
-            StoreFilterInScope(filter, scope);
-        }
-        catch (QueryParseException exception)
-        {
-            throw new InvalidQueryStringParameterException(_lastParameterName!, "The specified filter is invalid.", exception.Message, exception);
-        }
-    }
-
-    private ResourceFieldChainExpression? GetScope(string parameterName)
-    {
-        QueryStringParameterScopeExpression parameterScope = _scopeParser.Parse(parameterName, RequestResourceType);
-
-        if (parameterScope.Scope == null)
-        {
-            AssertIsCollectionRequest();
-        }
-
-        return parameterScope.Scope;
-    }
-
-    private FilterExpression GetFilter(string parameterValue, ResourceFieldChainExpression? scope)
-    {
-        ResourceType resourceTypeInScope = GetResourceTypeForScope(scope);
-        return _filterParser.Parse(parameterValue, resourceTypeInScope);
-    }
-
-    private void StoreFilterInScope(FilterExpression filter, ResourceFieldChainExpression? scope)
-    {
-        if (scope == null)
-        {
-            _filtersInGlobalScope.Add(filter);
-        }
-        else
-        {
-            if (!_filtersPerScope.ContainsKey(scope))
+            else
             {
-                _filtersPerScope[scope] = ImmutableArray.CreateBuilder<FilterExpression>();
+                yield return parameterValue;
+            }
+        }
+
+        private void ReadSingleValue(string parameterName, string parameterValue)
+        {
+            try
+            {
+                string name = parameterName;
+                string value = parameterValue;
+
+                if (_options.EnableLegacyFilterNotation)
+                {
+                    (name, value) = LegacyConverter.Convert(name, value);
+                }
+
+                ResourceFieldChainExpression? scope = GetScope(name);
+                FilterExpression filter = GetFilter(value, scope);
+
+                StoreFilterInScope(filter, scope);
+            }
+            catch (QueryParseException exception)
+            {
+                throw new InvalidQueryStringParameterException(_lastParameterName!, "The specified filter is invalid.", exception.Message, exception);
+            }
+        }
+
+        private ResourceFieldChainExpression? GetScope(string parameterName)
+        {
+            QueryStringParameterScopeExpression parameterScope = _scopeParser.Parse(parameterName, RequestResourceType);
+
+            if (parameterScope.Scope == null)
+            {
+                AssertIsCollectionRequest();
             }
 
-            _filtersPerScope[scope].Add(filter);
+            return parameterScope.Scope;
         }
-    }
 
-    /// <inheritdoc />
-    public virtual IReadOnlyCollection<ExpressionInScope> GetConstraints()
-    {
-        return EnumerateFiltersInScopes().ToArray();
-    }
-
-    private IEnumerable<ExpressionInScope> EnumerateFiltersInScopes()
-    {
-        if (_filtersInGlobalScope.Any())
+        private FilterExpression GetFilter(string parameterValue, ResourceFieldChainExpression? scope)
         {
-            FilterExpression filter = MergeFilters(_filtersInGlobalScope.ToImmutable());
-            yield return new ExpressionInScope(null, filter);
+            ResourceType resourceTypeInScope = GetResourceTypeForScope(scope);
+            return _filterParser.Parse(parameterValue, resourceTypeInScope);
         }
 
-        foreach ((ResourceFieldChainExpression scope, ImmutableArray<FilterExpression>.Builder filtersBuilder) in _filtersPerScope)
+        private void StoreFilterInScope(FilterExpression filter, ResourceFieldChainExpression? scope)
         {
-            FilterExpression filter = MergeFilters(filtersBuilder.ToImmutable());
-            yield return new ExpressionInScope(scope, filter);
-        }
-    }
+            if (scope == null)
+            {
+                _filtersInGlobalScope.Add(filter);
+            }
+            else
+            {
+                if (!_filtersPerScope.ContainsKey(scope))
+                {
+                    _filtersPerScope[scope] = ImmutableArray.CreateBuilder<FilterExpression>();
+                }
 
-    private static FilterExpression MergeFilters(IImmutableList<FilterExpression> filters)
-    {
-        return filters.Count > 1 ? new LogicalExpression(LogicalOperator.Or, filters) : filters.First();
+                _filtersPerScope[scope].Add(filter);
+            }
+        }
+
+        /// <inheritdoc />
+        public virtual IReadOnlyCollection<ExpressionInScope> GetConstraints()
+        {
+            return EnumerateFiltersInScopes().ToArray();
+        }
+
+        private IEnumerable<ExpressionInScope> EnumerateFiltersInScopes()
+        {
+            if (_filtersInGlobalScope.Any())
+            {
+                FilterExpression filter = MergeFilters(_filtersInGlobalScope.ToImmutable());
+                yield return new ExpressionInScope(null, filter);
+            }
+
+            foreach ((ResourceFieldChainExpression scope, ImmutableArray<FilterExpression>.Builder filtersBuilder) in _filtersPerScope)
+            {
+                FilterExpression filter = MergeFilters(filtersBuilder.ToImmutable());
+                yield return new ExpressionInScope(scope, filter);
+            }
+        }
+
+        private static FilterExpression MergeFilters(IImmutableList<FilterExpression> filters)
+        {
+            return filters.Count > 1 ? new LogicalExpression(LogicalOperator.Or, filters) : filters.First();
+        }
     }
 }

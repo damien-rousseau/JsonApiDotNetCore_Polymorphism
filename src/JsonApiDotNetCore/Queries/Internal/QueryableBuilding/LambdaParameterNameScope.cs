@@ -1,25 +1,26 @@
 using JetBrains.Annotations;
 
-namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding;
-
-[PublicAPI]
-public sealed class LambdaParameterNameScope : IDisposable
+namespace JsonApiDotNetCore.Queries.Internal.QueryableBuilding
 {
-    private readonly LambdaParameterNameFactory _owner;
-
-    public string Name { get; }
-
-    public LambdaParameterNameScope(string name, LambdaParameterNameFactory owner)
+    [PublicAPI]
+    public sealed class LambdaParameterNameScope : IDisposable
     {
-        ArgumentGuard.NotNullNorEmpty(name, nameof(name));
-        ArgumentGuard.NotNull(owner, nameof(owner));
+        private readonly LambdaParameterNameFactory _owner;
 
-        Name = name;
-        _owner = owner;
-    }
+        public string Name { get; }
 
-    public void Dispose()
-    {
-        _owner.Release(Name);
+        public LambdaParameterNameScope(string name, LambdaParameterNameFactory owner)
+        {
+            ArgumentGuard.NotNullNorEmpty(name, nameof(name));
+            ArgumentGuard.NotNull(owner, nameof(owner));
+
+            Name = name;
+            _owner = owner;
+        }
+
+        public void Dispose()
+        {
+            _owner.Release(Name);
+        }
     }
 }

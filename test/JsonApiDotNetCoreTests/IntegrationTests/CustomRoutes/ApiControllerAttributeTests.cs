@@ -4,35 +4,36 @@ using JsonApiDotNetCore.Serialization.Objects;
 using TestBuildingBlocks;
 using Xunit;
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.CustomRoutes;
-
-public sealed class ApiControllerAttributeTests : IClassFixture<IntegrationTestContext<TestableStartup<CustomRouteDbContext>, CustomRouteDbContext>>
+namespace JsonApiDotNetCoreTests.IntegrationTests.CustomRoutes
 {
-    private readonly IntegrationTestContext<TestableStartup<CustomRouteDbContext>, CustomRouteDbContext> _testContext;
-
-    public ApiControllerAttributeTests(IntegrationTestContext<TestableStartup<CustomRouteDbContext>, CustomRouteDbContext> testContext)
+    public sealed class ApiControllerAttributeTests : IClassFixture<IntegrationTestContext<TestableStartup<CustomRouteDbContext>, CustomRouteDbContext>>
     {
-        _testContext = testContext;
+        private readonly IntegrationTestContext<TestableStartup<CustomRouteDbContext>, CustomRouteDbContext> _testContext;
 
-        testContext.UseController<CiviliansController>();
-    }
+        public ApiControllerAttributeTests(IntegrationTestContext<TestableStartup<CustomRouteDbContext>, CustomRouteDbContext> testContext)
+        {
+            _testContext = testContext;
 
-    [Fact]
-    public async Task ApiController_attribute_transforms_NotFound_action_result_without_arguments_into_ProblemDetails()
-    {
-        // Arrange
-        const string route = "/world-civilians/missing";
+            testContext.UseController<CiviliansController>();
+        }
 
-        // Act
-        (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
+        [Fact]
+        public async Task ApiController_attribute_transforms_NotFound_action_result_without_arguments_into_ProblemDetails()
+        {
+            // Arrange
+            const string route = "/world-civilians/missing";
 
-        // Assert
-        httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
+            // Act
+            (HttpResponseMessage httpResponse, Document responseDocument) = await _testContext.ExecuteGetAsync<Document>(route);
 
-        responseDocument.Errors.ShouldHaveCount(1);
+            // Assert
+            httpResponse.Should().HaveStatusCode(HttpStatusCode.NotFound);
 
-        ErrorObject error = responseDocument.Errors[0];
-        error.Links.ShouldNotBeNull();
-        error.Links.About.Should().Be("https://tools.ietf.org/html/rfc7231#section-6.5.4");
+            responseDocument.Errors.ShouldHaveCount(1);
+
+            ErrorObject error = responseDocument.Errors[0];
+            error.Links.ShouldNotBeNull();
+            error.Links.About.Should().Be("https://tools.ietf.org/html/rfc7231#section-6.5.4");
+        }
     }
 }

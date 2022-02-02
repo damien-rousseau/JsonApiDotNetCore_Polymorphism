@@ -3,21 +3,22 @@ using Benchmarks.Deserialization;
 using Benchmarks.QueryString;
 using Benchmarks.Serialization;
 
-namespace Benchmarks;
-
-internal static class Program
+namespace Benchmarks
 {
-    private static void Main(string[] args)
+    internal static class Program
     {
-        var switcher = new BenchmarkSwitcher(new[]
+        private static void Main(string[] args)
         {
-            typeof(ResourceDeserializationBenchmarks),
-            typeof(OperationsDeserializationBenchmarks),
-            typeof(ResourceSerializationBenchmarks),
-            typeof(OperationsSerializationBenchmarks),
-            typeof(QueryStringParserBenchmarks)
-        });
+            var switcher = new BenchmarkSwitcher(new[]
+            {
+                typeof(ResourceDeserializationBenchmarks),
+                typeof(OperationsDeserializationBenchmarks),
+                typeof(ResourceSerializationBenchmarks),
+                typeof(OperationsSerializationBenchmarks),
+                typeof(QueryStringParserBenchmarks)
+            });
 
-        switcher.Run(args);
+            switcher.Run(args);
+        }
     }
 }

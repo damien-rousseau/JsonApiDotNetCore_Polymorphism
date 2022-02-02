@@ -3,6 +3,12 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>$(TargetFrameworkName)</TargetFramework>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\src\JsonApiDotNetCore\JsonApiDotNetCore.csproj" />

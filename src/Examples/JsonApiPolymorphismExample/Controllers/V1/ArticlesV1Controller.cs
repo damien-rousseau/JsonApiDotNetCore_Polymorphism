@@ -5,13 +5,14 @@ using JsonApiPolymorphismExample.Models;
 using JsonApiPolymorphismExample.Services.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace JsonApiPolymorphismExample.Controllers.V1;
-
-[DisableRoutingConvention]
-[Route("v1/articles")]
-public class ArticlesV1Controller : JsonApiControllerBase<ArticleBase>
+namespace JsonApiPolymorphismExample.Controllers.V1
 {
-    public ArticlesV1Controller(IConstraintsManager constraintsManager, IService<ArticleBase> service) : base(constraintsManager, service)
+    [DisableRoutingConvention]
+    [Route("v1/articles")]
+    public class ArticlesV1Controller : JsonApiControllerBase<ArticleBase>
     {
+        public ArticlesV1Controller(IConstraintsManager constraintsManager, IService<ArticleBase> service) : base(constraintsManager, service)
+        {
+        }
     }
 }

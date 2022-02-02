@@ -6,41 +6,42 @@ using TestBuildingBlocks;
 // @formatter:wrap_chained_method_calls chop_always
 // @formatter:keep_existing_linebreaks true
 
-namespace JsonApiDotNetCoreTests.IntegrationTests.ResourceConstructorInjection;
-
-internal sealed class InjectionFakers : FakerContainer
+namespace JsonApiDotNetCoreTests.IntegrationTests.ResourceConstructorInjection
 {
-    private readonly IServiceProvider _serviceProvider;
-
-    private readonly Lazy<Faker<PostOffice>> _lazyPostOfficeFaker;
-    private readonly Lazy<Faker<GiftCertificate>> _lazyGiftCertificateFaker;
-
-    public Faker<PostOffice> PostOffice => _lazyPostOfficeFaker.Value;
-    public Faker<GiftCertificate> GiftCertificate => _lazyGiftCertificateFaker.Value;
-
-    public InjectionFakers(IServiceProvider serviceProvider)
+    internal sealed class InjectionFakers : FakerContainer
     {
-        ArgumentGuard.NotNull(serviceProvider, nameof(serviceProvider));
+        private readonly IServiceProvider _serviceProvider;
 
-        _serviceProvider = serviceProvider;
+        private readonly Lazy<Faker<PostOffice>> _lazyPostOfficeFaker;
+        private readonly Lazy<Faker<GiftCertificate>> _lazyGiftCertificateFaker;
 
-        _lazyPostOfficeFaker = new Lazy<Faker<PostOffice>>(() =>
-            new Faker<PostOffice>()
-                .UseSeed(GetFakerSeed())
-                .CustomInstantiator(_ => new PostOffice(ResolveDbContext()))
-                .RuleFor(postOffice => postOffice.Address, faker => faker.Address.FullAddress()));
+        public Faker<PostOffice> PostOffice => _lazyPostOfficeFaker.Value;
+        public Faker<GiftCertificate> GiftCertificate => _lazyGiftCertificateFaker.Value;
 
-        _lazyGiftCertificateFaker = new Lazy<Faker<GiftCertificate>>(() =>
-            new Faker<GiftCertificate>()
-                .UseSeed(GetFakerSeed())
-                .CustomInstantiator(_ => new GiftCertificate(ResolveDbContext()))
-                .RuleFor(giftCertificate => giftCertificate.IssueDate, faker => faker.Date.PastOffset()
-                    .TruncateToWholeMilliseconds()));
-    }
+        public InjectionFakers(IServiceProvider serviceProvider)
+        {
+            ArgumentGuard.NotNull(serviceProvider, nameof(serviceProvider));
 
-    private InjectionDbContext ResolveDbContext()
-    {
-        using IServiceScope scope = _serviceProvider.CreateScope();
-        return scope.ServiceProvider.GetRequiredService<InjectionDbContext>();
+            _serviceProvider = serviceProvider;
+
+            _lazyPostOfficeFaker = new Lazy<Faker<PostOffice>>(() =>
+                new Faker<PostOffice>()
+                    .UseSeed(GetFakerSeed())
+                    .CustomInstantiator(_ => new PostOffice(ResolveDbContext()))
+                    .RuleFor(postOffice => postOffice.Address, faker => faker.Address.FullAddress()));
+
+            _lazyGiftCertificateFaker = new Lazy<Faker<GiftCertificate>>(() =>
+                new Faker<GiftCertificate>()
+                    .UseSeed(GetFakerSeed())
+                    .CustomInstantiator(_ => new GiftCertificate(ResolveDbContext()))
+                    .RuleFor(giftCertificate => giftCertificate.IssueDate, faker => faker.Date.PastOffset()
+                        .TruncateToWholeMilliseconds()));
+        }
+
+        private InjectionDbContext ResolveDbContext()
+        {
+            using IServiceScope scope = _serviceProvider.CreateScope();
+            return scope.ServiceProvider.GetRequiredService<InjectionDbContext>();
+        }
     }
 }

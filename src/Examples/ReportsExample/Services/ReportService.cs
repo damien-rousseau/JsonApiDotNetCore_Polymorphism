@@ -2,41 +2,42 @@ using JetBrains.Annotations;
 using JsonApiDotNetCore.Services;
 using ReportsExample.Models;
 
-namespace ReportsExample.Services;
-
-[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-public class ReportService : IGetAllService<Report, int>
+namespace ReportsExample.Services
 {
-    private readonly ILogger<ReportService> _logger;
-
-    public ReportService(ILoggerFactory loggerFactory)
+    [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+    public class ReportService : IGetAllService<Report, int>
     {
-        _logger = loggerFactory.CreateLogger<ReportService>();
-    }
+        private readonly ILogger<ReportService> _logger;
 
-    public Task<IReadOnlyCollection<Report>> GetAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("GetAsync");
-
-        IReadOnlyCollection<Report> reports = GetReports();
-
-        return Task.FromResult(reports);
-    }
-
-    private IReadOnlyCollection<Report> GetReports()
-    {
-        return new List<Report>
+        public ReportService(ILoggerFactory loggerFactory)
         {
-            new()
+            _logger = loggerFactory.CreateLogger<ReportService>();
+        }
+
+        public Task<IReadOnlyCollection<Report>> GetAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("GetAsync");
+
+            IReadOnlyCollection<Report> reports = GetReports();
+
+            return Task.FromResult(reports);
+        }
+
+        private IReadOnlyCollection<Report> GetReports()
+        {
+            return new List<Report>
             {
-                Id = 1,
-                Title = "Status Report",
-                Statistics = new ReportStatistics
+                new()
                 {
-                    ProgressIndication = "Almost done",
-                    HoursSpent = 24
+                    Id = 1,
+                    Title = "Status Report",
+                    Statistics = new ReportStatistics
+                    {
+                        ProgressIndication = "Almost done",
+                        HoursSpent = 24
+                    }
                 }
-            }
-        };
+            };
+        }
     }
 }

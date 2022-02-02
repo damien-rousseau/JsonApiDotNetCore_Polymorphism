@@ -1,7 +1,8 @@
-namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages;
-
-public interface IMessageContent
+namespace JsonApiDotNetCoreTests.IntegrationTests.Microservices.Messages
 {
-    // Increment when content structure changes.
-    int FormatVersion { get; }
+    public interface IMessageContent
+    {
+        // Increment when content structure changes.
+        int FormatVersion { get; }
+    }
 }
